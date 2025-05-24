@@ -25,7 +25,6 @@ impl<'i> Expr<'i> {
             }
             Expr::Call(head, tail) => {
                 let a = head.eval(env_table, env);
-                //println!("Essa {:?}", a);
                 match a? {
                     Expr::Procedure(proc) => proc.eval(env_table, env, tail),
                     Expr::Builtin(builtin) => builtin.eval(env_table, env, tail),

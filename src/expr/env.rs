@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap};
 
 use super::{Result, Error};
 use crate::expr::{Symbol, Expr};
@@ -12,6 +12,7 @@ impl Env {
     }
 }
 
+// TODO: better representation than hash table (removing envs)
 pub struct EnvTable<'i> {
     pub symbol_table: HashMap<(Symbol<'i>, Env), Expr<'i>>,
     env_parent_table: HashMap<Env, Env>,
@@ -31,6 +32,10 @@ impl<'i> EnvTable<'i> {
 
     pub fn define_symbol(&mut self, symbol: Symbol<'i>, env: Env, expr: Expr<'i>) {
         self.symbol_table.insert((symbol, env), expr);
+    }
+
+    pub fn undefine_symbol(&mut self, symbol: Symbol<'i>, env: Env) {
+        self.symbol_table.remove(&(symbol, env));
     }
 
     pub fn define_global_symbol(&mut self, symbol: Symbol<'i>, expr: Expr<'i>) {

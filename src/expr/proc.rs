@@ -6,7 +6,6 @@ use super::{Expr, Lit, Symbol, Env, EnvTable, Error, Result};
 pub struct Procedure<'i> {
     params: LinkedList<Symbol<'i>>,
     body: Box<Expr<'i>>,
-    env: Env,
 }
 
 impl <'i>Procedure<'i> {
@@ -15,20 +14,25 @@ impl <'i>Procedure<'i> {
             return Err(Error::IncorrectArgCount);
         }
 
+        let env = env_table.create_env(parent_env);
+
         for (param, arg) in self.params.iter().zip(args) {
             let arg_eval = arg.eval(env_table, parent_env)?;
             env_table.define_symbol(
                 *param,
-                self.env,
+                env,
                 arg_eval,
             );
         }
 
-        self.body.eval(env_table, self.env)
+        let res  = self.body.eval(env_table, env);
+        for param in self.params {
+            env_table.undefine_symbol(param, env);
+        }
+
+        res
     }
 }
-
-
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
@@ -56,7 +60,7 @@ impl Builtin {
         }
     }
 
-    fn lambda<'i>(&self, env_table: &mut EnvTable<'i>, parent_env: Env, mut args: LinkedList<Expr<'i>>) -> Result<Expr<'i>> {
+    fn lambda<'i>(&self, _env_table: &mut EnvTable<'i>, _parent_env: Env, mut args: LinkedList<Expr<'i>>) -> Result<Expr<'i>> {
         let body = 
             args
             .pop_back()
@@ -73,8 +77,7 @@ impl Builtin {
                 }
             ).collect::<Result<LinkedList<Symbol>>>()?;
         
-        let env = env_table.create_env(parent_env);
-        let proc = Expr::Procedure(Procedure {params, body: Box::new(body), env});
+        let proc = Expr::Procedure(Procedure {params, body: Box::new(body)});
         
         Ok(proc)
     }
@@ -94,7 +97,8 @@ impl Builtin {
         let body = 
             args
             .pop_front()
-            .ok_or(Error::IncorrectArgCount)?;
+            .ok_or(Error::IncorrectArgCount)?
+            .eval(env_table, env)?;
 
         env_table.define_symbol(symbol, env, body);
 
