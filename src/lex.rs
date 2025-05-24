@@ -22,14 +22,3 @@ pub enum Token<'i> {
     #[regex(r"[[:alpha:][:punct:]--)--(]+")]
     Symbol(&'i str),
 }
-
-#[macro_export]
-macro_rules! token {
-    ($token:tt$(($val:expr))?) => {
-        lisprust::lex::Token::$token$(($val))?
-    };
-    [$($token:tt$(($val:expr))?),*] => {
-        vec![$(lisprust::lex::Token::$token$(($val))?),*]
-    }
-}
-pub use token;
