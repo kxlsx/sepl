@@ -1,8 +1,8 @@
-use sepl::expr::{Builtin, Env, EnvTable};
-use sepl::parse::{Parser, Parse};
-use sepl::expr::{Expr, Symbol};
-use sepl::lex::Token;
 use logos::Logos;
+use sepl::eval::{Builtin, Env, EnvTable};
+use sepl::eval::{Expr, Symbol};
+use sepl::lex::Token;
+use sepl::parse::{Parse, Parser};
 
 const COD: &str = "
     (define pi  (- 4.1415 1.0))
@@ -32,7 +32,6 @@ fn main() {
     env_table.define_global_symbol(Symbol::from("*"), Expr::Builtin(Builtin::Mul));
     env_table.define_global_symbol(Symbol::from("/"), Expr::Builtin(Builtin::Div));
 
-
     let lex = Token::lexer(COD);
     let mut parser = Parser::new(lex.map(|t| t.expect("unexpected token")));
 
@@ -41,8 +40,7 @@ fn main() {
 
         match res {
             Ok(e) => println!("{}", e),
-            Err(e) => println!("{}", e)
+            Err(e) => println!("{}", e),
         }
-        
     }
 }

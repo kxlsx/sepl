@@ -1,5 +1,5 @@
-use std::hash::Hash;
 use std::fmt;
+use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Lit {
@@ -13,12 +13,12 @@ impl PartialEq for Lit {
         match (self, other) {
             (Lit::Bool(a), Lit::Bool(b)) => a == b,
             (Lit::Float(a), Lit::Float(b)) => a.to_bits() == b.to_bits(),
-            _ => false
+            _ => false,
         }
     }
 }
 
-impl Eq for Lit { }
+impl Eq for Lit {}
 
 impl Hash for Lit {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {

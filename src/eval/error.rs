@@ -15,6 +15,5 @@ pub enum Error {
     #[error("TODO: wrong arg type")]
     IncorrectArgType,
     #[error("TODO: not callable")]
-    NotCallable
+    NotCallable,
 }
-

@@ -1,9 +1,9 @@
 use std::collections::LinkedList;
 use std::iter::Peekable;
 
-use super::error::{Result, Error};
+use super::error::{Error, Result};
 
-use crate::expr::{Expr, Symbol, Lit};
+use crate::eval::{Expr, Lit, Symbol};
 use crate::lex::Token;
 
 pub struct Parser<'i, L: Iterator<Item = Token<'i>>> {
@@ -12,7 +12,9 @@ pub struct Parser<'i, L: Iterator<Item = Token<'i>>> {
 
 impl<'i, L: Iterator<Item = Token<'i>>> Parser<'i, L> {
     pub fn new(lexer: L) -> Self {
-        Parser { lexer: lexer.peekable() }
+        Parser {
+            lexer: lexer.peekable(),
+        }
     }
 
     pub fn peek_token(&mut self) -> Option<Token<'i>> {
@@ -23,7 +25,10 @@ impl<'i, L: Iterator<Item = Token<'i>>> Parser<'i, L> {
         self.lexer.next()
     }
 
-    pub fn next_token_if(&mut self, predicate: impl FnOnce(&Token<'i>) -> bool) -> Option<Token<'i>>{
+    pub fn next_token_if(
+        &mut self,
+        predicate: impl FnOnce(&Token<'i>) -> bool,
+    ) -> Option<Token<'i>> {
         self.lexer.next_if(predicate)
     }
 
@@ -59,18 +64,20 @@ impl<'i> Parse<'i> for Lit {
 }
 
 pub trait Parse<'i>
-where Self: Sized {
+where
+    Self: Sized,
+{
     fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self>;
 }
 
-impl <'i> Parse<'i> for Expr<'i> {
+impl<'i> Parse<'i> for Expr<'i> {
     fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self> {
         if let Ok(symbol) = Symbol::parse(parser) {
-            return Ok(Expr::Symbol(symbol))
+            return Ok(Expr::Symbol(symbol));
         }
 
         if let Ok(lit) = Lit::parse(parser) {
-            return Ok(Expr::Lit(lit))
+            return Ok(Expr::Lit(lit));
         }
 
         if parser.next_token_if_eq(&Token::LeftBracket).is_some() {
@@ -80,7 +87,7 @@ impl <'i> Parse<'i> for Expr<'i> {
             while parser.next_token_if_eq(&Token::RightBracket).is_none() {
                 tail.push_back(Expr::parse(parser)?);
             }
-    
+
             Ok(Expr::Call(Box::new(head), tail))
         } else {
             Err(Error::ExpectedExpr)

@@ -1,7 +1,7 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
-use super::{Result, Error};
-use crate::expr::{Symbol, Expr};
+use super::{Error, Result};
+use crate::eval::{Expr, Symbol};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Env(u32);
