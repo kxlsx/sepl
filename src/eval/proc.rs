@@ -52,6 +52,8 @@ impl fmt::Display for Procedure<'_> {
 pub enum Builtin {
     Lambda,
     Define,
+    Quote,
+    Eval,
     IfElse,
     Leq,
     Add,
@@ -65,11 +67,20 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable<'i>,
         env: Env,
-        args: LinkedList<Expr<'i>>,
+        mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
         match self {
             Builtin::Lambda => self.lambda(env_table, env, args),
             Builtin::Define => self.define(env_table, env, args),
+            Builtin::Quote => self.quote(env_table, env, args),
+            Builtin::Eval => {
+                if args.len() != 1 {
+                    Err(Error::IncorrectArgCount)
+                } else {
+                    println!("{:?}", args);
+                    args.pop_front().unwrap().eval(env_table, env)?.eval(env_table, env)
+                }
+            },
             Builtin::IfElse => self.ifelse(env_table, env, args),
             Builtin::Leq => self.leq(env_table, env, args),
             Builtin::Add => self.add(env_table, env, args),
@@ -112,6 +123,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let symbol = args.pop_front().ok_or(Error::IncorrectArgCount).map(|e| {
             if let Expr::Symbol(symbol) = e.eval(env_table, env)? {
                 Ok(symbol)
@@ -129,12 +144,29 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Nil)) // TODO: ???
     }
 
+    pub fn quote<'i>(
+        &self,
+        _env_table: &mut EnvTable<'i>,
+        _env: Env,
+        mut args: LinkedList<Expr<'i>>,
+    ) -> Result<Expr<'i>> {
+        if args.len() != 1 {
+            return Err(Error::IncorrectArgCount)
+        }
+
+        Ok(args.pop_front().unwrap())
+    }
+
     pub fn ifelse<'i>(
         &self,
         env_table: &mut EnvTable<'i>,
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 3 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let cond = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -163,6 +195,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let a = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -195,6 +231,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let a = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -227,6 +267,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let a = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -259,6 +303,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let a = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -291,6 +339,10 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr<'i>>,
     ) -> Result<Expr<'i>> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount)
+        }
+
         let a = args
             .pop_front()
             .ok_or(Error::IncorrectArgCount)?
@@ -323,6 +375,8 @@ impl fmt::Display for Builtin {
         match self {
             Builtin::Lambda => "lambda",
             Builtin::Define => "define",
+            Builtin::Quote => "quote",
+            Builtin::Eval => "eval",
             Builtin::IfElse => "ifelse",
             Builtin::Leq => "<=",
             Builtin::Add => "+",

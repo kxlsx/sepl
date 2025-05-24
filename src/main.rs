@@ -19,12 +19,16 @@ const COD: &str = "
 
     (fact_ale_lepszy 30.)
     fib
+
+    (eval (quote (fib 10.0)))
 ";
 
 fn main() {
     let mut env_table: EnvTable<'_> = EnvTable::new();
     env_table.define_global_symbol(Symbol::from("lambda"), Expr::Builtin(Builtin::Lambda));
     env_table.define_global_symbol(Symbol::from("define"), Expr::Builtin(Builtin::Define));
+    env_table.define_global_symbol(Symbol::from("quote"), Expr::Builtin(Builtin::Quote));
+    env_table.define_global_symbol(Symbol::from("eval"), Expr::Builtin(Builtin::Eval));
     env_table.define_global_symbol(Symbol::from("if"), Expr::Builtin(Builtin::IfElse));
     env_table.define_global_symbol(Symbol::from("<="), Expr::Builtin(Builtin::Leq));
     env_table.define_global_symbol(Symbol::from("+"), Expr::Builtin(Builtin::Add));
