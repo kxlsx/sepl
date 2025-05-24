@@ -4,9 +4,6 @@ use sepl::expr::{Expr, Symbol};
 use sepl::lex::Token;
 use logos::Logos;
 
-use std::env;
-use std::io::{self, BufRead};
-
 const COD: &str = "
     (define pi  (+ 3.1415 1.0))
     (/ ((lambda x (* x x)) pi) 6.)
@@ -14,10 +11,10 @@ const COD: &str = "
     (define = (lambda a b (if (<= a b) (<= b a) false)))
 
     (define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))
-    (fact 10.)
+    (fact 30.)
     
     (define fib (lambda n (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib (- n 1.0)) (fib (- n 2.0)))))))
-    (fib 20.0)
+    (fib 10.0)
 ";
 
 fn main() {

@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Lit {
-    Float(f32),
+    Float(f64),
     Bool(bool),
     Nil,
 }

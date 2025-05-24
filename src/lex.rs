@@ -9,10 +9,10 @@ pub enum Token<'i> {
     RightBracket,
     #[regex(
         r"[0-9]+\.[0-9]*|[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+",
-        |lex| lex.slice().parse::<f32>().expect("TODO: ?????"),
+        |lex| lex.slice().parse::<f64>().expect("TODO: ?????"),
         priority = 2
     )]
-    Float(f32),
+    Float(f64),
     #[token("true")]
     True,
     #[token("false")]
