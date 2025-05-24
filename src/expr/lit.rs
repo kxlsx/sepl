@@ -1,4 +1,5 @@
 use std::hash::Hash;
+use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Lit {
@@ -25,6 +26,16 @@ impl Hash for Lit {
             Lit::Bool(bool) => bool.hash(state),
             Lit::Float(float) => float.to_bits().hash(state),
             Lit::Nil => Lit::Nil.hash(state),
+        }
+    }
+}
+
+impl fmt::Display for Lit {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Lit::Float(float) => float.fmt(f),
+            Lit::Bool(bool) => bool.fmt(f),
+            Lit::Nil => "nil".fmt(f),
         }
     }
 }

@@ -7,3 +7,4 @@
 - add ints
 - tests
 - cli
+- figure out symbol ownership

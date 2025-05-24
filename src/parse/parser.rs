@@ -49,6 +49,7 @@ impl<'i> Parse<'i> for Lit {
             Some(Token::Float(float)) => Ok(Lit::Float(float)),
             Some(Token::True) => Ok(Lit::Bool(true)),
             Some(Token::False) => Ok(Lit::Bool(false)),
+            Some(Token::Nil) => Ok(Lit::Nil),
             _ => Err(Error::ExpectedLit),
         }?;
 

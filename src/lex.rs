@@ -17,6 +17,8 @@ pub enum Token<'i> {
     True,
     #[token("false")]
     False,
+    #[token("nil")]
+    Nil,
     #[regex(r"[[:alpha:][:punct:]--)--(]+")]
     Symbol(&'i str),
 }

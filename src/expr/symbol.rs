@@ -1,3 +1,5 @@
+use std::fmt;
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Symbol<'i> {
@@ -13,5 +15,11 @@ impl<'i> From<&'i str> for Symbol<'i> {
 impl<'i> Into<String> for Symbol<'i> {
     fn into(self) -> String {
         String::from(self.name)
+    }
+}
+
+impl fmt::Display for Symbol<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.name.fmt(f)
     }
 }

@@ -1,4 +1,5 @@
 use std::collections::LinkedList;
+use std::fmt;
 
 use super::{Expr, Lit, Symbol, Env, EnvTable, Error, Result};
 
@@ -34,6 +35,18 @@ impl <'i>Procedure<'i> {
     }
 }
 
+impl fmt::Display for Procedure<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "({}", Builtin::Lambda)?;
+
+        for symbol in &self.params {
+            write!(f, " {}", symbol)?;
+        }
+
+        write!(f, " {})", self.body)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
     Lambda,
@@ -60,7 +73,7 @@ impl Builtin {
         }
     }
 
-    fn lambda<'i>(&self, _env_table: &mut EnvTable<'i>, _parent_env: Env, mut args: LinkedList<Expr<'i>>) -> Result<Expr<'i>> {
+    fn lambda<'i>(&self, env_table: &mut EnvTable<'i>, env: Env, mut args: LinkedList<Expr<'i>>) -> Result<Expr<'i>> {
         let body = 
             args
             .pop_back()
@@ -70,7 +83,7 @@ impl Builtin {
             args
             .into_iter()
             .map(|e| 
-                if let Expr::Symbol(symbol) = e {
+                if let Expr::Symbol(symbol) = e.eval(env_table, env)? {
                     Ok(symbol)
                 } else {
                     Err(Error::IncorrectArgType)
@@ -88,7 +101,7 @@ impl Builtin {
             .pop_front()
             .ok_or(Error::IncorrectArgCount)
             .map(|e|
-                if let Expr::Symbol(symbol) = e {
+                if let Expr::Symbol(symbol) = e.eval(env_table, env)? {
                     Ok(symbol)
                 } else {
                     Err(Error::IncorrectArgType)
@@ -274,5 +287,20 @@ impl Builtin {
             )??;
 
         Ok(Expr::Lit(Lit::Float(a / b)))
+    }
+}
+
+impl fmt::Display for Builtin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Builtin::Lambda => "lambda",
+            Builtin::Define => "define",
+            Builtin::IfElse => "ifelse",
+            Builtin::Leq => "<=",
+            Builtin::Add => "+",
+            Builtin::Sub => "-",
+            Builtin::Mul => "*",
+            Builtin::Div => "/",
+        }.fmt(f)
     }
 }

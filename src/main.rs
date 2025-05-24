@@ -5,7 +5,7 @@ use sepl::lex::Token;
 use logos::Logos;
 
 const COD: &str = "
-    (define pi  (+ 3.1415 1.0))
+    (define pi  (- 4.1415 1.0))
     (/ ((lambda x (* x x)) pi) 6.)
     (define > (lambda a b (if (<= a b) false true)))
     (define = (lambda a b (if (<= a b) (<= b a) false)))
@@ -15,6 +15,10 @@ const COD: &str = "
     
     (define fib (lambda n (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib (- n 1.0)) (fib (- n 2.0)))))))
     (fib 10.0)
+    (define fact_ale_lepszy fact)
+
+    (fact_ale_lepszy 30.)
+    fib
 ";
 
 fn main() {
@@ -33,8 +37,12 @@ fn main() {
     let mut parser = Parser::new(lex.map(|t| t.expect("unexpected token")));
 
     while let Ok(expr) = Expr::parse(&mut parser) {
-        println!("{:?}", expr);
+        let res = expr.eval(&mut env_table, Env::global());
 
-        println!("{:?}\n", expr.eval(&mut env_table, Env::global()));
+        match res {
+            Ok(e) => println!("{}", e),
+            Err(e) => println!("{}", e)
+        }
+        
     }
 }

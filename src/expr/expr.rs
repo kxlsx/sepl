@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, hash::Hash};
+use std::{fmt, collections::LinkedList, hash::Hash};
 
 use super::{Symbol, Lit, Builtin, Procedure, Env, EnvTable, Error, Result};
 
@@ -21,7 +21,11 @@ impl<'i> Expr<'i> {
             Expr::Procedure(proc) =>
                 Ok(Expr::Procedure(proc)),
             Expr::Symbol(symbol) => {
-                env_table.resolve_symbol(symbol, env)?.clone().eval(env_table, env)
+                if let Ok(expr) = env_table.resolve_symbol(symbol, env) {
+                    expr.clone().eval(env_table, env)
+                } else {
+                    Ok(Expr::Symbol(symbol))
+                }
             }
             Expr::Call(head, tail) => {
                 let a = head.eval(env_table, env);
@@ -35,3 +39,20 @@ impl<'i> Expr<'i> {
     }
 }
 
+impl fmt::Display for Expr<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Expr::Lit(lit) => lit.fmt(f),
+            Expr::Symbol(symbol) => symbol.fmt(f),
+            Expr::Procedure(proc) => proc.fmt(f),
+            Expr::Builtin(builtin) => builtin.fmt(f),
+            Expr::Call(head, tail ) => {
+                write!(f, "({}", head)?;
+                for expr in tail {
+                    write!(f, " {}", expr)?;
+                }
+                write!(f, ")")
+            }
+        }
+    }
+}
