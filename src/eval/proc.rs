@@ -7,6 +7,7 @@ use super::{Env, EnvTable, Error, Expr, Lit, Result, Symbol};
 pub struct Procedure<'i> {
     params: LinkedList<Symbol<'i>>,
     body: Box<Expr<'i>>,
+    created_in_env: Env, // TODO: quick fix, check this out later.
 }
 
 impl<'i> Procedure<'i> {
@@ -20,17 +21,31 @@ impl<'i> Procedure<'i> {
             return Err(Error::IncorrectArgCount);
         }
 
-        let env = env_table.create_env(parent_env);
+        // FIXME: test whether this works; i'm currently
+        // creating the new env as a child of the procedure's original env,
+        // but evaluating the arguments in the current parent env.
+        let env = env_table.create_env(self.created_in_env);
 
         for (param, arg) in self.params.iter().zip(args) {
             let arg_eval = arg.eval(env_table, parent_env)?;
             env_table.define_symbol(*param, env, arg_eval);
         }
 
+        // println!("{:?}", env_table.resolve_symbol(Symbol::from("n"), env));
+        // println!("{:?}", env_table.resolve_symbol(Symbol::from("fib"), env));
+        //println!("{:?}", (self.parent_env, _parent_env));
+        // for ((a, e), _) in &env_table.symbol_table {
+        //     if e.0 != 0 && a. {
+        //         println!("{:?} {:?}", a, e);
+        //     }
+            
+        // }
+
+        // FIXME: gotta clean up unneeded envs somehow
         let res = self.body.eval(env_table, env);
-        for param in self.params {
-            env_table.undefine_symbol(param, env);
-        }
+        // for param in self.params {
+        //     env_table.undefine_symbol(param, env);
+        // }
 
         res
     }
@@ -77,7 +92,6 @@ impl Builtin {
                 if args.len() != 1 {
                     Err(Error::IncorrectArgCount)
                 } else {
-                    println!("{:?}", args);
                     args.pop_front().unwrap().eval(env_table, env)?.eval(env_table, env)
                 }
             },
@@ -112,6 +126,7 @@ impl Builtin {
         let proc = Expr::Procedure(Procedure {
             params,
             body: Box::new(body),
+            created_in_env: env,
         });
 
         Ok(proc)
