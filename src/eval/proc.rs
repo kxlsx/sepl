@@ -69,6 +69,7 @@ pub enum Builtin {
     Define,
     Quote,
     Eval,
+    Print,
     IfElse,
     Leq,
     Add,
@@ -95,6 +96,7 @@ impl Builtin {
                     args.pop_front().unwrap().eval(env_table, env)?.eval(env_table, env)
                 }
             },
+            Builtin::Print => self.print(env_table, env, args),
             Builtin::IfElse => self.ifelse(env_table, env, args),
             Builtin::Leq => self.leq(env_table, env, args),
             Builtin::Add => self.add(env_table, env, args),
@@ -170,6 +172,23 @@ impl Builtin {
         }
 
         Ok(args.pop_front().unwrap())
+    }
+
+    pub fn print<'i>(
+        &self,
+        env_table: &mut EnvTable<'i>,
+        env: Env,
+        args: LinkedList<Expr<'i>>,
+    ) -> Result<Expr<'i>> {
+        if args.len() < 1 {
+            return Err(Error::IncorrectArgCount)
+        }
+
+        for arg in args {
+            print!("{} ", arg.eval(env_table, env)?);
+        }
+
+        Ok(Expr::Lit(Lit::Nil))
     }
 
     pub fn ifelse<'i>(
@@ -392,6 +411,7 @@ impl fmt::Display for Builtin {
             Builtin::Define => "define",
             Builtin::Quote => "quote",
             Builtin::Eval => "eval",
+            Builtin::Print => "print",
             Builtin::IfElse => "ifelse",
             Builtin::Leq => "<=",
             Builtin::Add => "+",

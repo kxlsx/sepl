@@ -29,6 +29,8 @@ const COD: &str = "
 
     (define f (lambda a (lambda b (lambda c (+ a (+ b c))))))
     (((f 2.) 2.) 2.)
+
+    (print Hello, World!)
 ";
 
 fn main() {
@@ -37,6 +39,7 @@ fn main() {
     env_table.define_global_symbol(Symbol::from("define"), Expr::Builtin(Builtin::Define));
     env_table.define_global_symbol(Symbol::from("quote"), Expr::Builtin(Builtin::Quote));
     env_table.define_global_symbol(Symbol::from("eval"), Expr::Builtin(Builtin::Eval));
+    env_table.define_global_symbol(Symbol::from("print"), Expr::Builtin(Builtin::Print));
     env_table.define_global_symbol(Symbol::from("if"), Expr::Builtin(Builtin::IfElse));
     env_table.define_global_symbol(Symbol::from("<="), Expr::Builtin(Builtin::Leq));
     env_table.define_global_symbol(Symbol::from("+"), Expr::Builtin(Builtin::Add));

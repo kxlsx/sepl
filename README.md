@@ -7,4 +7,4 @@
 - add ints
 - tests
 - cli
-- figure out symbol ownership
+- figure out symbol ownership (env table should own them)
