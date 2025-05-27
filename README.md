@@ -1,4 +1,5 @@
-# TODO:
+# DO 7 CZERWCA
+## TODO:
 - repl
 - **DOCS (!)**
 - pretty print expressions
