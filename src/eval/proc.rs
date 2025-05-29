@@ -4,19 +4,19 @@ use std::fmt;
 use super::{Env, EnvTable, Error, Expr, Lit, Result, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Procedure<'i> {
-    params: LinkedList<Symbol<'i>>,
-    body: Box<Expr<'i>>,
+pub struct Procedure {
+    params: LinkedList<Symbol>,
+    body: Box<Expr>,
     created_in_env: Env, // TODO: quick fix, check this out later.
 }
 
-impl<'i> Procedure<'i> {
+impl Procedure {
     pub fn eval(
         self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         parent_env: Env,
-        args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if self.params.len() != args.len() {
             return Err(Error::IncorrectArgCount);
         }
@@ -51,25 +51,12 @@ impl<'i> Procedure<'i> {
     }
 }
 
-impl fmt::Display for Procedure<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "({}", Builtin::Lambda)?;
-
-        for symbol in &self.params {
-            write!(f, " {}", symbol)?;
-        }
-
-        write!(f, " {})", self.body)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
     Lambda,
     Define,
     Quote,
     Eval,
-    Print,
     IfElse,
     Leq,
     Add,
@@ -79,18 +66,17 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    pub fn eval<'i>(
+    pub fn eval(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         match self {
             Builtin::Lambda => self.builtin_lambda(env_table, env, args),
             Builtin::Define => self.builtin_define(env_table, env, args),
             Builtin::Quote => self.builtin_quote(env_table, env, args),
             Builtin::Eval => self.builtin_eval(env_table, env, args),
-            Builtin::Print => self.builtin_print(env_table, env, args),
             Builtin::IfElse => self.builtin_ifelse(env_table, env, args),
             Builtin::Leq => self.builtin_leq(env_table, env, args),
             Builtin::Add => self.builtin_add(env_table, env, args),
@@ -100,12 +86,12 @@ impl Builtin {
         }
     }
 
-    fn builtin_lambda<'i>(
+    fn builtin_lambda(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         let body = args.pop_back().ok_or(Error::IncorrectArgCount)?;
 
         let params = args
@@ -128,12 +114,12 @@ impl Builtin {
         Ok(proc)
     }
 
-    fn builtin_define<'i>(
+    fn builtin_define(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -155,12 +141,12 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Nil)) // TODO: ???
     }
 
-    fn builtin_quote<'i>(
+    fn builtin_quote(
         &self,
-        _env_table: &mut EnvTable<'i>,
+        _env_table: &mut EnvTable,
         _env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount)
         }
@@ -168,12 +154,12 @@ impl Builtin {
         Ok(args.pop_front().unwrap())
     }
 
-    fn builtin_eval<'i>(
+    fn builtin_eval(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount);
         }
@@ -184,29 +170,12 @@ impl Builtin {
         .eval(env_table, env)?.eval(env_table, env)
     }
 
-    fn builtin_print<'i>(
+    fn builtin_ifelse(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
-        if args.len() < 1 {
-            return Err(Error::IncorrectArgCount)
-        }
-
-        for arg in args {
-            print!("{} ", arg.eval(env_table, env)?);
-        }
-
-        Ok(Expr::Lit(Lit::Nil))
-    }
-
-    fn builtin_ifelse<'i>(
-        &self,
-        env_table: &mut EnvTable<'i>,
-        env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 3 {
             return Err(Error::IncorrectArgCount)
         }
@@ -235,12 +204,12 @@ impl Builtin {
         })
     }
 
-    fn builtin_leq<'i>(
+    fn builtin_leq(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -273,10 +242,10 @@ impl Builtin {
 
     fn builtin_add<'i>(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -307,12 +276,12 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a + b)))
     }
 
-    fn builtin_sub<'i>(
+    fn builtin_sub(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -343,12 +312,12 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a - b)))
     }
 
-    fn builtin_mul<'i>(
+    fn builtin_mul(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -379,12 +348,12 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a * b)))
     }
 
-    fn builtin_div<'i>(
+    fn builtin_div(
         &self,
-        env_table: &mut EnvTable<'i>,
+        env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr<'i>>,
-    ) -> Result<Expr<'i>> {
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount)
         }
@@ -423,8 +392,8 @@ impl fmt::Display for Builtin {
             Builtin::Define => "define",
             Builtin::Quote => "quote",
             Builtin::Eval => "eval",
-            Builtin::Print => "print",
-            Builtin::IfElse => "ifelse",
+
+            Builtin::IfElse => "if",
             Builtin::Leq => "<=",
             Builtin::Add => "+",
             Builtin::Sub => "-",

@@ -13,14 +13,14 @@ impl Env {
 }
 
 // TODO: better representation than hash table (removing envs)
-pub struct EnvTable<'i> {
-    pub symbol_table: HashMap<(Symbol<'i>, Env), Expr<'i>>,
+pub struct EnvTable {
+    pub symbol_table: HashMap<(Symbol, Env), Expr>,
     env_parent_table: HashMap<Env, Env>,
     env_global: Env,
     env_next: Env,
 }
 
-impl<'i> EnvTable<'i> {
+impl EnvTable {
     pub fn new() -> Self {
         Self {
             symbol_table: HashMap::new(),
@@ -30,19 +30,19 @@ impl<'i> EnvTable<'i> {
         }
     }
 
-    pub fn define_symbol(&mut self, symbol: Symbol<'i>, env: Env, expr: Expr<'i>) {
+    pub fn define_symbol(&mut self, symbol: Symbol, env: Env, expr: Expr) {
         self.symbol_table.insert((symbol, env), expr);
     }
 
-    pub fn undefine_symbol(&mut self, symbol: Symbol<'i>, env: Env) {
+    pub fn undefine_symbol(&mut self, symbol: Symbol, env: Env) {
         self.symbol_table.remove(&(symbol, env));
     }
 
-    pub fn define_global_symbol(&mut self, symbol: Symbol<'i>, expr: Expr<'i>) {
+    pub fn define_global_symbol(&mut self, symbol: Symbol, expr: Expr) {
         self.define_symbol(symbol, Env::global(), expr);
     }
 
-    pub fn resolve_symbol(&self, symbol: Symbol<'i>, env: Env) -> Result<&Expr<'i>> {
+    pub fn resolve_symbol(&self, symbol: Symbol, env: Env) -> Result<&Expr> {
         if let Some(expr) = self.symbol_table.get(&(symbol, env)) {
             Ok(expr)
         } else if env != self.env_global {

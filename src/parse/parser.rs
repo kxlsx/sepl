@@ -3,17 +3,19 @@ use std::iter::Peekable;
 
 use super::error::{Error, Result};
 
-use crate::eval::{Expr, Lit, Symbol};
+use crate::eval::{Expr, Lit, Symbol, SymbolTable};
 use crate::lex::Token;
 
-pub struct Parser<'i, L: Iterator<Item = Token<'i>>> {
+pub struct Parser<'s, 'i, L: Iterator<Item = Token<'i>>> {
     lexer: Peekable<L>,
+    symbol_table: &'s mut SymbolTable,
 }
 
-impl<'i, L: Iterator<Item = Token<'i>>> Parser<'i, L> {
-    pub fn new(lexer: L) -> Self {
+impl<'s, 'i, L: Iterator<Item = Token<'i>>> Parser<'s, 'i, L> {
+    pub fn new(lexer: L, symbol_table: &'s mut SymbolTable) -> Self {
         Parser {
             lexer: lexer.peekable(),
+            symbol_table
         }
     }
 
@@ -37,19 +39,27 @@ impl<'i, L: Iterator<Item = Token<'i>>> Parser<'i, L> {
     }
 }
 
-impl<'i> Parse<'i> for Symbol<'i> {
-    fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self> {
+pub trait Parse
+where
+    Self: Sized,
+{
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self>;
+}
+
+
+impl Parse for Symbol {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
         if let Some(Token::Symbol(name)) = parser.peek_token() {
             parser.next_token();
-            Ok(Symbol::from(name))
+            Ok(parser.symbol_table.intern(name))
         } else {
             Err(Error::ExpectedSymbol)
         }
     }
 }
 
-impl<'i> Parse<'i> for Lit {
-    fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self> {
+impl Parse for Lit {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
         let lit = match parser.peek_token() {
             Some(Token::Float(float)) => Ok(Lit::Float(float)),
             Some(Token::True) => Ok(Lit::Bool(true)),
@@ -63,15 +73,8 @@ impl<'i> Parse<'i> for Lit {
     }
 }
 
-pub trait Parse<'i>
-where
-    Self: Sized,
-{
-    fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self>;
-}
-
-impl<'i> Parse<'i> for Expr<'i> {
-    fn parse<L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'i, L>) -> Result<Self> {
+impl Parse for Expr {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
         if let Ok(symbol) = Symbol::parse(parser) {
             return Ok(Expr::Symbol(symbol));
         }

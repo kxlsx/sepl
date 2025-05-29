@@ -12,4 +12,6 @@ pub enum Error {
     ExpectedLit,
     #[error("TODO: expected expr")]
     ExpectedExpr,
+    #[error("TODO: unexpected EOF")]
+    UnexpectedEOF,
 }
