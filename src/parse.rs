@@ -2,6 +2,7 @@ use std::collections::LinkedList;
 use std::error::Error as ErrorTrait;
 use std::iter::Peekable;
 
+use logos::Logos;
 use thiserror::Error;
 
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
@@ -90,6 +91,37 @@ where
         } else {
             Some(self.parse_expr())
         }
+    }
+}
+
+pub trait ParseFrom<T> 
+where 
+    Self: Sized,
+{
+    fn parse_from(value: T, symbol_table: &mut SymbolTable) -> Result<Self, Error>;
+}
+
+impl ParseFrom<&str> for Expr {
+    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
+        Expr::parse(
+            &mut Parser::new(Token::lexer(value), symbol_table)
+        )
+    }
+}
+
+impl ParseFrom<&str> for Symbol {
+    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
+        Symbol::parse(
+            &mut Parser::new(Token::lexer(value), symbol_table)
+        )
+    }
+}
+
+impl ParseFrom<&str> for Lit {
+    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
+        Lit::parse(
+            &mut Parser::new(Token::lexer(value), symbol_table)
+        )
     }
 }
 
