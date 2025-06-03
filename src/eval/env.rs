@@ -89,6 +89,10 @@ impl EvalTable {
         Env::global()
     }
 
+    pub fn env_count(&self) -> usize {
+        self.env_tree.len()
+    }
+
     pub fn env_create(&mut self, captured_env: Env) -> Env {
         let env = Env::unique();
         self.insert_env(env, captured_env);

@@ -54,5 +54,6 @@ fn main() {
             Ok(e) => println!("{:?}", e),
             Err(e) => println!("{}", e),
         }
+        println!("count: {}", eval_table.env_count());
     }
 }
