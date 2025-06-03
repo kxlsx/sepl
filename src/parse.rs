@@ -11,15 +11,19 @@ use crate::lex::{Error as LexError, Token};
 // TODO:
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("TODO: something something expected symbol")]
-    ExpectedSymbol,
-    #[error("TODO: expected literal")]
-    ExpectedLit,
-    #[error("TODO: expected expr")]
+    #[error("Expected a symbol, found: '{found}'.")]
+    ExpectedSymbol{found: String},
+    #[error("Expected a literal, found: '{found}'.")]
+    ExpectedLit{found: String},
+    #[error("Expressions cannot be empty.")]
     ExpectedExpr,
-    #[error("TODO: unexpected EOF")]
+    #[error("Expected '(', '[', or '}}', found: '{found}'")]
+    ExpectedLeftBracket{found: String},
+    #[error("Expected a matching '{expected}', found '{found}'")]
+    ExpectedRightBracket{expected: String, found: String},
+    #[error("Unexpected EOF")]
     UnexpectedEOF,
-    #[error("TODO: unexpected Token")]
+    #[error("Unexpected Token")]
     UnexpectedToken,
 }
 
@@ -148,7 +152,7 @@ impl Parse for Symbol {
             }
             Some(Err(lex_error)) => Err(lex_error.into()),
             None => Err(Error::UnexpectedEOF),
-            _ => Err(Error::ExpectedSymbol),
+            Some(Ok(other_token)) => Err(Error::ExpectedSymbol{found: other_token.to_string()}),
         }
     }
 }
@@ -166,7 +170,7 @@ impl Parse for Lit {
             Some(Ok(Token::Nil)) => Ok(Lit::Nil),
             Some(Err(lex_error)) => Err(lex_error.into()),
             None => Err(Error::UnexpectedEOF),
-            _ => Err(Error::ExpectedLit),
+            Some(Ok(other_token)) => Err(Error::ExpectedLit{found: other_token.to_string()}),
         }?;
 
         parser.eat();
@@ -188,22 +192,27 @@ impl Parse for Expr {
             return Ok(Expr::Lit(lit));
         }
 
-        match parser.lookahead() {
-            Some(Ok(Token::LeftBracket)) => (),
+        let matching_bracket = match parser.lookahead() {
+            Some(Ok(Token::LeftBracket(bracket_type))) => Token::RightBracket(bracket_type),
             Some(Err(lex_error)) => return Err(lex_error.into()),
             None => return Err(Error::UnexpectedEOF),
-            _ => return Err(Error::ExpectedExpr),
-        }
+            Some(Ok(other_token)) => return Err(Error::ExpectedLeftBracket{found: other_token.to_string()}),
+        };
 
         parser.eat();
 
-        let head = Expr::parse(parser)?;
-        let mut tail = LinkedList::new();
+        let mut body = LinkedList::new();
 
-        while parser.eat_if_eq(Token::RightBracket).is_none() {
-            tail.push_back(Expr::parse(parser)?);
+        while parser.eat_if_eq(matching_bracket).is_none() {
+            body.push_back(Expr::parse(parser).map_err(
+            |err|  match err {
+                Error::ExpectedLeftBracket{found} => Error::ExpectedRightBracket{found, expected: matching_bracket.to_string()},
+                _ => err,
+            }
+            )?);
         }
 
-        Ok(Expr::Call(Box::new(head), tail))
+        let head = Box::new(body.pop_front().ok_or(Error::ExpectedExpr)?);
+        Ok(Expr::Call(head, body))
     }
 }

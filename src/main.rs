@@ -45,7 +45,7 @@ fn main() {
     for parsed_expr in parser {
         if let Err(e) = parsed_expr {
             println!("{}", e);
-            continue;
+            break;
         }
         let expr = parsed_expr.unwrap();
 
