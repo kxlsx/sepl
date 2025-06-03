@@ -2,10 +2,10 @@
 ## TODO:
 - repl
 - **DOCS (!)**
-- pretty print expressions
+- pretty print expressions (EvalDisplay trait or something)
 - better error messages
-- clean up + add more builtins (quote)
+- clean up + add more builtins
 - add ints
 - tests
 - cli
-- figure out symbol ownership (env table should own them)
+- figure out lib interface

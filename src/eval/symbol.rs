@@ -1,18 +1,16 @@
-use std::{collections::HashMap, rc::Rc};
+use core::str;
+use std::{collections::HashMap, slice::from_raw_parts};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Symbol(usize);
-
+pub struct Symbol(*const u8, usize);
 
 pub struct SymbolTable {
-    resolve_table: HashMap<Symbol, Rc<str>>,
-    string_stor: HashMap<Rc<str>, Symbol>,
+    string_stor: HashMap<Box<str>, Symbol>,
 }
 
 impl SymbolTable {
     pub fn new() -> Self {
         Self {
-            resolve_table: HashMap::new(),
             string_stor: HashMap::new(),
         }
     }
@@ -21,18 +19,24 @@ impl SymbolTable {
         if let Some(symbol) = self.string_stor.get(name) {
             *symbol
         } else {
-            let name_cloned: Rc<str> = Rc::from(name);
-            let symbol = Symbol(name_cloned.as_ptr() as usize);
-            
-            self.string_stor.insert(name_cloned.clone(), symbol);
-            self.resolve_table.insert(symbol, name_cloned);
+            let name_cloned: Box<str> = Box::from(name);
+            let symbol = Symbol(name_cloned.as_ptr(), name_cloned.len());
+
+            self.string_stor.insert(name_cloned, symbol);
 
             symbol
         }
     }
 
-    pub fn resolve(&self, symbol: &Symbol) -> Option<&str> {
-        Some(self.resolve_table.get(symbol)?.as_ref())
+    pub fn resolve(&self, symbol: Symbol) -> &str {
+        let Symbol(ptr, len) = symbol;
+
+        unsafe { str::from_utf8_unchecked(from_raw_parts(ptr, len)) }
     }
 }
 
+impl Default for SymbolTable {
+    fn default() -> Self {
+        Self::new()
+    }
+}

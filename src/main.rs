@@ -1,6 +1,6 @@
 use logos::Logos;
-use sepl::eval::{Builtin, Env, EnvTable, SymbolTable};
 use sepl::eval::Expr;
+use sepl::eval::{Builtin, EvalTable, SymbolTable};
 use sepl::lex::Token;
 use sepl::parse::Parser;
 
@@ -36,22 +36,53 @@ const COD: &str = "
 
 fn main() {
     let mut symbol_table = SymbolTable::new();
-    
-    let mut env_table: EnvTable = EnvTable::new();
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Lambda.to_string()), Expr::Builtin(Builtin::Lambda));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Define.to_string()), Expr::Builtin(Builtin::Define));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Quote.to_string()), Expr::Builtin(Builtin::Quote));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Eval.to_string()), Expr::Builtin(Builtin::Eval));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::IfElse.to_string()), Expr::Builtin(Builtin::IfElse));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Leq.to_string()), Expr::Builtin(Builtin::Leq));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Add.to_string()), Expr::Builtin(Builtin::Add));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Sub.to_string()), Expr::Builtin(Builtin::Sub));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Mul.to_string()), Expr::Builtin(Builtin::Mul));
-    env_table.define_global_symbol(symbol_table.intern(&Builtin::Div.to_string()), Expr::Builtin(Builtin::Div));
+
+    let mut env_table: EvalTable = EvalTable::new();
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Lambda.to_string()),
+        Expr::Builtin(Builtin::Lambda),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Define.to_string()),
+        Expr::Builtin(Builtin::Define),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Quote.to_string()),
+        Expr::Builtin(Builtin::Quote),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Eval.to_string()),
+        Expr::Builtin(Builtin::Eval),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::IfElse.to_string()),
+        Expr::Builtin(Builtin::IfElse),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Leq.to_string()),
+        Expr::Builtin(Builtin::Leq),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Add.to_string()),
+        Expr::Builtin(Builtin::Add),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Sub.to_string()),
+        Expr::Builtin(Builtin::Sub),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Mul.to_string()),
+        Expr::Builtin(Builtin::Mul),
+    );
+    env_table.symbol_define_global(
+        symbol_table.intern(&Builtin::Div.to_string()),
+        Expr::Builtin(Builtin::Div),
+    );
 
     let lex = Token::lexer(COD);
     let parser = Parser::new(lex.map(|t| t.expect("unexpected token")), &mut symbol_table);
 
+    let env_global = env_table.env_global();
     for parsed_expr in parser {
         if let Err(e) = parsed_expr {
             println!("{}", e);
@@ -59,8 +90,7 @@ fn main() {
         }
         let expr = parsed_expr.unwrap();
 
-        let evaluated_expr = expr.eval(&mut env_table, Env::global());
-
+        let evaluated_expr = expr.eval(&mut env_table, env_global);
         match evaluated_expr {
             Ok(e) => println!("{:?}", e),
             Err(e) => println!("{}", e),

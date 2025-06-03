@@ -1,73 +1,175 @@
 use std::collections::HashMap;
 
-use super::{Error, Result};
+use uuid::Uuid;
+
 use crate::eval::{Expr, Symbol};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Env(u32);
+pub struct Env(Uuid);
 
 impl Env {
-    pub fn global() -> Self {
-        Env(0)
+    pub const fn global() -> Self {
+        Env(Uuid::nil())
+    }
+
+    fn unique() -> Self {
+        Env(Uuid::new_v4())
     }
 }
 
-// TODO: better representation than hash table (removing envs)
-pub struct EnvTable {
-    pub symbol_table: HashMap<(Symbol, Env), Expr>,
-    env_parent_table: HashMap<Env, Env>,
-    env_global: Env,
-    env_next: Env,
+#[derive(Debug)]
+struct EnvTreeNode {
+    captured_env: Env,
+    capturing_count: usize,
 }
 
-impl EnvTable {
-    pub fn new() -> Self {
+impl EnvTreeNode {
+    fn global() -> Self {
         Self {
-            symbol_table: HashMap::new(),
-            env_parent_table: HashMap::from([(Env::global(), Env::global())]),
-            env_global: Env::global(),
-            env_next: Env(1),
+            captured_env: Env::global(),
+            capturing_count: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct EvalTable {
+    env_tree: HashMap<Env, EnvTreeNode>,
+    symbol_definitions: HashMap<Env, HashMap<Symbol, Expr>>,
+}
+
+impl EvalTable {
+    pub fn new() -> Self {
+        EvalTable {
+            env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
+            symbol_definitions: HashMap::new(),
         }
     }
 
-    pub fn define_symbol(&mut self, symbol: Symbol, env: Env, expr: Expr) {
-        self.symbol_table.insert((symbol, env), expr);
+    pub fn symbol_define_global(&mut self, symbol: Symbol, expr: Expr) -> Option<Expr> {
+        self.symbol_define(symbol, self.env_global(), expr)
     }
 
-    pub fn undefine_symbol(&mut self, symbol: Symbol, env: Env) {
-        self.symbol_table.remove(&(symbol, env));
+    pub fn symbol_define(&mut self, symbol: Symbol, env: Env, expr: Expr) -> Option<Expr> {
+        if let Expr::Procedure(procedure) = &expr {
+            self.increment_capturing_count(procedure.captured_env());
+        }
+
+        self.symbol_definitions
+            .entry(env)
+            .or_default()
+            .insert(symbol, expr)
     }
 
-    pub fn define_global_symbol(&mut self, symbol: Symbol, expr: Expr) {
-        self.define_symbol(symbol, Env::global(), expr);
-    }
-
-    pub fn resolve_symbol(&self, symbol: Symbol, env: Env) -> Result<&Expr> {
-        if let Some(expr) = self.symbol_table.get(&(symbol, env)) {
-            Ok(expr)
-        } else if env != self.env_global {
-            Ok(self.resolve_symbol(symbol, self.parent_env(env))?)
-        } else {
-            Err(Error::UndefinedSymbol)
+    pub fn symbol_definition(&self, symbol: Symbol, env: Env) -> Option<&Expr> {
+        let definition_option = self
+            .symbol_definitions
+            .get(&env)
+            .and_then(|symbol_defs| symbol_defs.get(&symbol));
+        match (env, definition_option) {
+            (env, result) if env == self.env_global() => result,
+            (_, Some(expr)) => Some(expr),
+            (env, None) => self.symbol_definition(symbol, self.get_captured_env(env)),
         }
     }
 
-    pub fn create_env(&mut self, parent_env: Env) -> Env {
-        let env = self.new_env();
+    pub fn env_global(&self) -> Env {
+        Env::global()
+    }
 
-        self.env_parent_table.insert(env, parent_env);
-
+    pub fn env_create(&mut self, captured_env: Env) -> Env {
+        let env = Env::unique();
+        self.insert_env(env, captured_env);
         env
     }
 
-    fn parent_env(&self, env: Env) -> Env {
-        *self.env_parent_table.get(&env).expect("TODO:")
+    pub fn env_try_destroy(&mut self, env: Env) -> bool {
+        if env == Env::global() {
+            return false;
+        }
+        if !self.env_tree.contains_key(&env) {
+            return false;
+        }
+        if self.get_capturing_count(env) != 0 {
+            return false;
+        }
+
+        let captured_env = self.get_captured_env(env);
+
+        self.remove_node(env);
+        self.decrement_capturing_count(captured_env);
+
+        if let Some(symbol_defs) = self.symbol_definitions.remove(&env) {
+            for (_, expr) in symbol_defs.iter() {
+                if let Expr::Procedure(procedure) = expr {
+                    self.decrement_capturing_count(procedure.captured_env())
+                }
+            }
+        }
+
+        true
     }
 
-    fn new_env(&mut self) -> Env {
-        let Env(e) = self.env_next;
+    fn insert_env(&mut self, env: Env, captured_env: Env) {
+        self.insert_node(
+            env,
+            EnvTreeNode {
+                captured_env,
+                capturing_count: 0,
+            },
+        );
+        self.increment_capturing_count(captured_env);
+    }
 
-        self.env_next = Env(e + 1);
-        Env(e)
+    fn insert_node(&mut self, env: Env, node: EnvTreeNode) {
+        match self.env_tree.insert(env, node) {
+            None => (),
+            Some(_) => panic!("Tried to insert existing Env."),
+        }
+    }
+
+    fn remove_node(&mut self, env: Env) {
+        self.env_tree
+            .remove(&env)
+            .expect("Tried to remove non-existent Env");
+    }
+
+    fn get_captured_env(&self, env: Env) -> Env {
+        self.get_node(env).captured_env
+    }
+
+    fn get_capturing_count(&self, env: Env) -> usize {
+        self.get_node(env).capturing_count
+    }
+
+    fn decrement_capturing_count(&mut self, env: Env) {
+        let node = self.get_node_mut(env);
+        node.capturing_count -= 1;
+
+        if node.capturing_count == 0 {
+            self.env_try_destroy(env);
+        }
+    }
+
+    fn increment_capturing_count(&mut self, env: Env) {
+        self.get_node_mut(env).capturing_count += 1
+    }
+
+    fn get_node(&self, env: Env) -> &EnvTreeNode {
+        self.env_tree
+            .get(&env)
+            .expect("Tried to get non-existent Env.")
+    }
+
+    fn get_node_mut(&mut self, env: Env) -> &mut EnvTreeNode {
+        self.env_tree
+            .get_mut(&env)
+            .expect("Tried to get mutable non-existent Env.")
+    }
+}
+
+impl Default for EvalTable {
+    fn default() -> Self {
+        Self::new()
     }
 }

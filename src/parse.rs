@@ -1,10 +1,26 @@
 use std::collections::LinkedList;
 use std::iter::Peekable;
 
-use super::error::{Error, Result};
+use core::result::Result as StdResult;
+use thiserror::Error;
 
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
 use crate::lex::Token;
+
+pub type Result<T> = StdResult<T, Error>;
+
+// TODO:
+#[derive(Error, Debug)]
+pub enum Error {
+    #[error("TODO: something something expected symbol")]
+    ExpectedSymbol,
+    #[error("TODO: expected literal")]
+    ExpectedLit,
+    #[error("TODO: expected expr")]
+    ExpectedExpr,
+    #[error("TODO: unexpected EOF")]
+    UnexpectedEOF,
+}
 
 pub struct Parser<'s, 'i, L: Iterator<Item = Token<'i>>> {
     lexer: Peekable<L>,
@@ -15,7 +31,7 @@ impl<'s, 'i, L: Iterator<Item = Token<'i>>> Parser<'s, 'i, L> {
     pub fn new(lexer: L, symbol_table: &'s mut SymbolTable) -> Self {
         Parser {
             lexer: lexer.peekable(),
-            symbol_table
+            symbol_table,
         }
     }
 
@@ -60,25 +76,29 @@ pub trait Parse
 where
     Self: Sized,
 {
-    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self>;
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>)
+        -> Result<Self>;
 }
 
-
 impl Parse for Symbol {
-    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(
+        parser: &mut Parser<'s, 'i, L>,
+    ) -> Result<Self> {
         match parser.lookahead() {
             Some(Token::Symbol(name)) => {
                 parser.eat();
                 Ok(parser.symbol_table.intern(name))
-            },
+            }
             None => Err(Error::UnexpectedEOF),
-            _ => Err(Error::ExpectedSymbol)
+            _ => Err(Error::ExpectedSymbol),
         }
     }
 }
 
 impl Parse for Lit {
-    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(
+        parser: &mut Parser<'s, 'i, L>,
+    ) -> Result<Self> {
         let lit = match parser.lookahead() {
             Some(Token::Float(float)) => Ok(Lit::Float(float)),
             Some(Token::True) => Ok(Lit::Bool(true)),
@@ -94,7 +114,9 @@ impl Parse for Lit {
 }
 
 impl Parse for Expr {
-    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(parser: &mut Parser<'s, 'i, L>) -> Result<Self> {
+    fn parse<'s, 'i, L: Iterator<Item = Token<'i>>>(
+        parser: &mut Parser<'s, 'i, L>,
+    ) -> Result<Self> {
         if let Ok(symbol) = Symbol::parse(parser) {
             return Ok(Expr::Symbol(symbol));
         }
@@ -113,7 +135,7 @@ impl Parse for Expr {
 
         let head = Expr::parse(parser)?;
         let mut tail = LinkedList::new();
-    
+
         while parser.eat_if_eq(&Token::RightBracket).is_none() {
             tail.push_back(Expr::parse(parser)?);
         }
