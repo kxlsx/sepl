@@ -1,18 +1,30 @@
-use std::{collections::LinkedList, fmt};
+use std::collections::LinkedList;
+
+use strum_macros::{Display, EnumIter, AsRefStr};
 
 use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(EnumIter, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
+    #[strum(serialize = "lambda")]
     Lambda,
+    #[strum(serialize = "define")]
     Define,
+    #[strum(serialize = "quote")]
     Quote,
+    #[strum(serialize = "eval")]
     Eval,
+    #[strum(serialize = "if")]
     IfElse,
+    #[strum(serialize = "<=")]
     Leq,
+    #[strum(serialize = "+")]
     Add,
+    #[strum(serialize = "-")]
     Sub,
+    #[strum(serialize = "*")]
     Mul,
+    #[strum(serialize = "/")]
     Div,
 }
 
@@ -336,21 +348,3 @@ impl Builtin {
     }
 }
 
-impl fmt::Display for Builtin {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Builtin::Lambda => "lambda",
-            Builtin::Define => "define",
-            Builtin::Quote => "quote",
-            Builtin::Eval => "eval",
-
-            Builtin::IfElse => "if",
-            Builtin::Leq => "<=",
-            Builtin::Add => "+",
-            Builtin::Sub => "-",
-            Builtin::Mul => "*",
-            Builtin::Div => "/",
-        }
-        .fmt(f)
-    }
-}

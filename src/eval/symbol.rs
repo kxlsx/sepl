@@ -4,6 +4,7 @@ use std::{collections::HashMap, slice::from_raw_parts};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Symbol(*const u8, usize);
 
+#[derive(Debug)]
 pub struct SymbolTable {
     string_stor: HashMap<Box<str>, Symbol>,
 }
