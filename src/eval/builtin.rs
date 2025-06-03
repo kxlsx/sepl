@@ -14,6 +14,8 @@ pub enum Builtin {
     Quote,
     #[strum(serialize = "eval")]
     Eval,
+    #[strum(serialize = "do")]
+    Do,
     #[strum(serialize = "if")]
     IfElse,
     #[strum(serialize = "<=")]
@@ -40,6 +42,7 @@ impl Builtin {
             Builtin::Define => self.builtin_define(eval_table, env, args),
             Builtin::Quote => self.builtin_quote(eval_table, env, args),
             Builtin::Eval => self.builtin_eval(eval_table, env, args),
+            Builtin::Do => self.builtin_do(eval_table, env, args),
             Builtin::IfElse => self.builtin_ifelse(eval_table, env, args),
             Builtin::Leq => self.builtin_leq(eval_table, env, args),
             Builtin::Add => self.builtin_add(eval_table, env, args),
@@ -130,6 +133,25 @@ impl Builtin {
             .unwrap()
             .eval(eval_table, env)?
             .eval(eval_table, env)
+    }
+
+    fn builtin_do(
+        &self,
+        eval_table: &mut EvalTable,
+        env: Env,
+        mut args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() <= 1 {
+            return Err(Error::IncorrectArgCount);
+        }
+
+        let arg_last = args.pop_back().unwrap();
+
+        for arg in args {
+            arg.eval(eval_table, env)?;
+        }
+
+        arg_last.eval(eval_table, env)
     }
 
     fn builtin_ifelse(
