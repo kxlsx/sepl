@@ -1,12 +1,9 @@
-use strum::IntoEnumIterator;
-
-use sepl::eval::Expr;
-use sepl::eval::{Builtin, EvalTable, SymbolTable};
+use sepl::eval::{EvalTable, SymbolTable};
 use sepl::lex::{Token, Lex};
 use sepl::parse::Parser;
 
 const COD: &str = "
-    (define pi  (- 4.1415 1.0))
+    (define pi (- 4.1415 1.0))
     (/ ((lambda x (* x x)) pi) 6.)
     (define > (lambda a b (if (<= a b) false true)))
 
@@ -36,13 +33,8 @@ const COD: &str = "
 ";
 
 fn main() {
-    let mut eval_table = EvalTable::default();
     let mut symbol_table = SymbolTable::new();
-
-    for builtin in Builtin::iter() {
-        let symbol = symbol_table.intern(builtin.as_ref());
-        eval_table.symbol_define_global(symbol, Expr::Builtin(builtin));
-    }
+    let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
 
     let lex = Token::lexer(COD);
     let parser = Parser::new(lex, &mut symbol_table);

@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
 use uuid::Uuid;
+use strum::IntoEnumIterator;
 
-use crate::eval::{Expr, Symbol};
+use crate::eval::{Builtin, Expr, Symbol, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Env(Uuid);
@@ -44,6 +45,17 @@ impl EvalTable {
             env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
             symbol_definitions: HashMap::new(),
         }
+    }
+
+    pub fn with_builtins(symbol_table: &mut SymbolTable) -> Self {
+        let mut eval_table = Self::new();
+
+        for builtin in Builtin::iter() {
+            let symbol = symbol_table.intern(builtin.as_ref());
+            eval_table.symbol_define_global(symbol, Expr::Builtin(builtin));
+        }
+
+        eval_table
     }
 
     pub fn symbol_define_global(&mut self, symbol: Symbol, expr: Expr) -> Option<Expr> {
