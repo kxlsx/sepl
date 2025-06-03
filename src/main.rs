@@ -80,7 +80,7 @@ fn main() {
     );
 
     let lex = Token::lexer(COD);
-    let parser = Parser::new(lex.map(|t| t.expect("unexpected token")), &mut symbol_table);
+    let parser = Parser::new(lex, &mut symbol_table);
 
     let env_global = env_table.env_global();
     for parsed_expr in parser {

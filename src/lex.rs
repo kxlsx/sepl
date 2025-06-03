@@ -1,7 +1,18 @@
-use logos::Logos;
+use thiserror::Error;
 
-#[derive(Logos, Debug, Clone, Copy, PartialEq)]
+pub use logos::Logos as Lex;
+
+// TODO:
+#[derive(Copy, Clone, Error, Debug, PartialEq, Default)]
+pub enum Error {
+    #[default]
+    #[error("TODO: unexpected token")]
+    UnexpectedToken,
+}
+
+#[derive(Lex, Debug, Clone, Copy, PartialEq)]
 #[logos(skip r"[ \t\n\f]+")]
+#[logos(error = Error)]
 pub enum Token<'i> {
     #[token("(")]
     LeftBracket,

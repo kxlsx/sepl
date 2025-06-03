@@ -1,6 +1,6 @@
 use std::{collections::LinkedList, fmt};
 
-use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Result, Symbol};
+use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
@@ -22,7 +22,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(eval_table, env, args),
             Builtin::Define => self.builtin_define(eval_table, env, args),
@@ -42,7 +42,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         let body = args.pop_back().ok_or(Error::IncorrectArgCount)?;
 
         let params = args
@@ -54,7 +54,7 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })
-            .collect::<Result<LinkedList<Symbol>>>()?;
+            .collect::<Result<LinkedList<Symbol>, Error>>()?;
 
         Ok(Expr::Procedure(Procedure::new(
             params,
@@ -69,7 +69,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
@@ -96,7 +96,7 @@ impl Builtin {
         _eval_table: &mut EvalTable,
         _env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount);
         }
@@ -109,7 +109,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount);
         }
@@ -125,7 +125,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 3 {
             return Err(Error::IncorrectArgCount);
         }
@@ -160,7 +160,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
@@ -196,7 +196,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
@@ -232,7 +232,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
@@ -268,7 +268,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
@@ -304,7 +304,7 @@ impl Builtin {
         eval_table: &mut EvalTable,
         env: Env,
         mut args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }

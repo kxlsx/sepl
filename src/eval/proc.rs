@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use super::{Env, Error, EvalTable, Expr, Result, Symbol};
+use super::{Env, Error, EvalTable, Expr, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Procedure {
@@ -28,7 +28,7 @@ impl Procedure {
         eval_table: &mut EvalTable,
         parent_env: Env,
         args: LinkedList<Expr>,
-    ) -> Result<Expr> {
+    ) -> Result<Expr, Error> {
         if self.params.len() != args.len() {
             return Err(Error::IncorrectArgCount);
         }

@@ -1,6 +1,6 @@
 use std::{collections::LinkedList, hash::Hash};
 
-use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Result, Symbol};
+use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
@@ -12,7 +12,7 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn eval(self, eval_table: &mut EvalTable, env: Env) -> Result<Self> {
+    pub fn eval(self, eval_table: &mut EvalTable, env: Env) -> Result<Self, Error> {
         match self {
             Expr::Lit(lit) => Ok(Expr::Lit(lit)),
             Expr::Builtin(builtin) => Ok(Expr::Builtin(builtin)),

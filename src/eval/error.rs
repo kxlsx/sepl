@@ -1,7 +1,4 @@
-use core::result::Result as StdResult;
 use thiserror::Error;
-
-pub type Result<T> = StdResult<T, Error>;
 
 // TODO:
 #[derive(Error, Debug)]
