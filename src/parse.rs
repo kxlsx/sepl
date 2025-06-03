@@ -63,15 +63,15 @@ where
         Lit::parse(self)
     }
 
-    fn lookahead(&mut self) -> Option<Result<Token<'i>, E>> {
+    pub fn lookahead(&mut self) -> Option<Result<Token<'i>, E>> {
         self.lexer.peek().copied()
     }
 
-    fn eat(&mut self) -> Option<Result<Token<'i>, E>> {
+    pub fn eat(&mut self) -> Option<Result<Token<'i>, E>> {
         self.lexer.next()
     }
 
-    fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, E>> {
+    pub fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, E>> {
         self.lexer
             .next_if(|lex_res| lex_res.is_ok_and(|token| token == expected))
     }
