@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-// TODO:
+// TODO: better errors
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("TODO: wrong arg count")]

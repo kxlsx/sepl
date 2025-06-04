@@ -6,7 +6,6 @@ use logos::Lexer;
 
 pub use logos::Logos as Lex;
 
-// TODO:
 #[derive(Copy, Clone, Error, Debug, PartialEq, Default)]
 pub enum Error {
     #[default]
@@ -23,7 +22,7 @@ pub enum Token<'i> {
     #[regex(r"[\)\]\}]", parse_bracket_token)]
     RightBracket(BracketType),
     #[regex(
-        r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+",
+        r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+", // FIXME: make 32e 5.e etc invalid
         parse_float_token,
         priority = 2
     )]
@@ -99,7 +98,7 @@ mod tests {
     }
 
     #[test]
-    fn test_brakets() -> Result<(), Error> {
+    fn lex_brakets() -> Result<(), Error> {
         let source = "([{}])";
         let mut lexer = Token::lexer(source);
 
@@ -115,7 +114,7 @@ mod tests {
     }
 
     #[test]
-    fn test_symbols() -> Result<(), Error> {
+    fn lex_symbols() -> Result<(), Error> {
         let source = "skrzat\tchur-bo\nmc.flungus ;;; + __ - -abba";
         let mut lexer = Token::lexer(source);
 
@@ -133,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn test_symbols_bad() -> Result<(), Error> {
+    fn lex_symbols_bad() -> Result<(), Error> {
         let source = "-21. 12. true false nil ([{}]) 😎😎😎 形声形聲 ąęśćłżź";
         let mut lexer = Token::lexer(source);
 
@@ -168,7 +167,7 @@ mod tests {
     }
 
     #[test]
-    fn test_keywords() -> Result<(), Error> {
+    fn lex_keywords() -> Result<(), Error> {
         let source = "true false nil";
         let mut lexer = Token::lexer(source);
 
@@ -181,7 +180,7 @@ mod tests {
     }
 
     #[test]
-    fn test_floats() -> Result<(), Error> {
+    fn lex_floats() -> Result<(), Error> {
         let source = "21. -37.42 0.1 1e-2 3E45 -15e10";
         let mut lexer = Token::lexer(source);
 

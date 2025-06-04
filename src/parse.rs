@@ -8,7 +8,6 @@ use thiserror::Error;
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
 use crate::lex::{Error as LexError, Token};
 
-// TODO:
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Expected a symbol, found: '{found}'.")]
@@ -220,10 +219,11 @@ impl Parse for Expr {
     }
 }
 
-// TODO:
 #[cfg(test)]
 mod tests {
     use super:: *;
+
+    // TODO: more parse tests
 
     #[test]
     fn parse_lits() -> Result<(), Error> {

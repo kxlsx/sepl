@@ -225,3 +225,8 @@ impl EnvTreeNode {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //TODO: evaltable tests
+}

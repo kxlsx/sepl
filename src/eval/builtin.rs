@@ -103,7 +103,7 @@ impl Builtin {
 
         eval_table.symbol_define(symbol, env, body);
 
-        Ok(Expr::Lit(Lit::Nil)) // TODO: ???
+        Ok(Expr::Lit(Lit::Nil))
     }
 
     fn builtin_quote(
@@ -368,4 +368,9 @@ impl Builtin {
 
         Ok(Expr::Lit(Lit::Float(a / b)))
     }
+}
+
+#[cfg(test)]
+mod tests {
+    // TODO: builtin tests
 }

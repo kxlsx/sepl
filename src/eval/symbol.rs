@@ -41,3 +41,8 @@ impl Default for SymbolTable {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    //TODO: symboltable tests
+}
