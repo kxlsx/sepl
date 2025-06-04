@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use uuid::Uuid;
 use strum::IntoEnumIterator;
+use uuid::Uuid;
 
 use crate::eval::{Builtin, Expr, Symbol, SymbolTable};
 

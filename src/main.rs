@@ -1,5 +1,5 @@
 use sepl::eval::{EvalTable, SymbolTable};
-use sepl::lex::{Token, Lex};
+use sepl::lex::{Lex, Token};
 use sepl::parse::Parser;
 
 const COD: &str = "
@@ -23,7 +23,7 @@ const COD: &str = "
     (define car (lambda z (z (lambda p q p))))
     (define cdr (lambda z (z (lambda p q q))))
 
-    (define list (cons 1.0 (cons 2. (cons 3. nil))))
+    [define list {cons 1.0 {cons 2. {cons 3. nil}}}]
 
     (define f (lambda a (lambda b (lambda c (+ a (+ b c))))))
     (((f 2.) 2.) 2.)

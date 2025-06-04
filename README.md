@@ -9,3 +9,5 @@
 - tests
 - cli
 - figure out lib interface
+- maybe get rid of bool?
+- make linked lists vecs

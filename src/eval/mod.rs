@@ -13,3 +13,6 @@ pub use expr::*;
 pub use lit::*;
 pub use proc::*;
 pub use symbol::*;
+
+#[cfg(test)]
+mod tests;

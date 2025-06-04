@@ -12,15 +12,15 @@ use crate::lex::{Error as LexError, Token};
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("Expected a symbol, found: '{found}'.")]
-    ExpectedSymbol{found: String},
+    ExpectedSymbol { found: String },
     #[error("Expected a literal, found: '{found}'.")]
-    ExpectedLit{found: String},
+    ExpectedLit { found: String },
     #[error("Expressions cannot be empty.")]
     ExpectedExpr,
     #[error("Expected '(', '[', or '}}', found: '{found}'")]
-    ExpectedLeftBracket{found: String},
+    ExpectedLeftBracket { found: String },
     #[error("Expected a matching '{expected}', found '{found}'")]
-    ExpectedRightBracket{expected: String, found: String},
+    ExpectedRightBracket { expected: String, found: String },
     #[error("Unexpected EOF")]
     UnexpectedEOF,
     #[error("Unexpected Token")]
@@ -98,8 +98,8 @@ where
     }
 }
 
-pub trait ParseFrom<T> 
-where 
+pub trait ParseFrom<T>
+where
     Self: Sized,
 {
     fn parse_from(value: T, symbol_table: &mut SymbolTable) -> Result<Self, Error>;
@@ -107,25 +107,19 @@ where
 
 impl ParseFrom<&str> for Expr {
     fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Expr::parse(
-            &mut Parser::new(Token::lexer(value), symbol_table)
-        )
+        Expr::parse(&mut Parser::new(Token::lexer(value), symbol_table))
     }
 }
 
 impl ParseFrom<&str> for Symbol {
     fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Symbol::parse(
-            &mut Parser::new(Token::lexer(value), symbol_table)
-        )
+        Symbol::parse(&mut Parser::new(Token::lexer(value), symbol_table))
     }
 }
 
 impl ParseFrom<&str> for Lit {
     fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Lit::parse(
-            &mut Parser::new(Token::lexer(value), symbol_table)
-        )
+        Lit::parse(&mut Parser::new(Token::lexer(value), symbol_table))
     }
 }
 
@@ -152,7 +146,9 @@ impl Parse for Symbol {
             }
             Some(Err(lex_error)) => Err(lex_error.into()),
             None => Err(Error::UnexpectedEOF),
-            Some(Ok(other_token)) => Err(Error::ExpectedSymbol{found: other_token.to_string()}),
+            Some(Ok(other_token)) => Err(Error::ExpectedSymbol {
+                found: other_token.to_string(),
+            }),
         }
     }
 }
@@ -170,7 +166,9 @@ impl Parse for Lit {
             Some(Ok(Token::Nil)) => Ok(Lit::Nil),
             Some(Err(lex_error)) => Err(lex_error.into()),
             None => Err(Error::UnexpectedEOF),
-            Some(Ok(other_token)) => Err(Error::ExpectedLit{found: other_token.to_string()}),
+            Some(Ok(other_token)) => Err(Error::ExpectedLit {
+                found: other_token.to_string(),
+            }),
         }?;
 
         parser.eat();
@@ -196,7 +194,11 @@ impl Parse for Expr {
             Some(Ok(Token::LeftBracket(bracket_type))) => Token::RightBracket(bracket_type),
             Some(Err(lex_error)) => return Err(lex_error.into()),
             None => return Err(Error::UnexpectedEOF),
-            Some(Ok(other_token)) => return Err(Error::ExpectedLeftBracket{found: other_token.to_string()}),
+            Some(Ok(other_token)) => {
+                return Err(Error::ExpectedLeftBracket {
+                    found: other_token.to_string(),
+                })
+            }
         };
 
         parser.eat();
@@ -204,15 +206,72 @@ impl Parse for Expr {
         let mut body = LinkedList::new();
 
         while parser.eat_if_eq(matching_bracket).is_none() {
-            body.push_back(Expr::parse(parser).map_err(
-            |err|  match err {
-                Error::ExpectedLeftBracket{found} => Error::ExpectedRightBracket{found, expected: matching_bracket.to_string()},
+            body.push_back(Expr::parse(parser).map_err(|err| match err {
+                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
+                    found,
+                    expected: matching_bracket.to_string(),
+                },
                 _ => err,
-            }
-            )?);
+            })?);
         }
 
         let head = Box::new(body.pop_front().ok_or(Error::ExpectedExpr)?);
         Ok(Expr::Call(head, body))
+    }
+}
+
+// TODO:
+#[cfg(test)]
+mod tests {
+    use super:: *;
+
+    #[test]
+    fn parse_lits() -> Result<(), Error> {
+        let source = "true false nil 1.443 -1.12 -4231. 1e-10 -15e10";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Bool(true))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Bool(false))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Nil)
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Float(1.443))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Float(-1.12))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Float(-4231.))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Float(1e-10))
+        );
+
+        assert_eq!(
+            Expr::parse(&mut parser)?,
+            Expr::Lit(Lit::Float(-15e10))
+        );
+
+        Ok(())
     }
 }

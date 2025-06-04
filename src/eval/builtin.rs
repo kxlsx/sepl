@@ -1,6 +1,6 @@
 use std::collections::LinkedList;
 
-use strum_macros::{Display, EnumIter, AsRefStr};
+use strum_macros::{AsRefStr, Display, EnumIter};
 
 use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
 
@@ -369,4 +369,3 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a / b)))
     }
 }
-

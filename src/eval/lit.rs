@@ -12,6 +12,7 @@ impl PartialEq for Lit {
         match (self, other) {
             (Lit::Bool(a), Lit::Bool(b)) => a == b,
             (Lit::Float(a), Lit::Float(b)) => a.to_bits() == b.to_bits(),
+            (Lit::Nil, Lit::Nil) => true,
             _ => false,
         }
     }
