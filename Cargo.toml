@@ -8,11 +8,3 @@ thiserror = "2.0"
 logos = "0.15"
 strum = "0.27.0"
 strum_macros = "0.27"
-
-[dependencies.uuid]
-version = "1.17"
-# Lets you generate random UUIDs
-features = [
-    "v4",
-    "fast-rng"
-]

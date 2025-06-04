@@ -1,40 +1,21 @@
 use std::collections::HashMap;
 
 use strum::IntoEnumIterator;
-use uuid::Uuid;
 
 use crate::eval::{Builtin, Expr, Symbol, SymbolTable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Env(Uuid);
+pub struct Env(u64);
 
 impl Env {
     pub const fn global() -> Self {
-        Env(Uuid::nil())
-    }
-
-    fn unique() -> Self {
-        Env(Uuid::new_v4())
-    }
-}
-
-#[derive(Debug)]
-struct EnvTreeNode {
-    captured_env: Env,
-    capturing_count: usize,
-}
-
-impl EnvTreeNode {
-    fn global() -> Self {
-        Self {
-            captured_env: Env::global(),
-            capturing_count: 0,
-        }
+        EnvAllocator::env_global()
     }
 }
 
 #[derive(Debug)]
 pub struct EvalTable {
+    env_allocator: EnvAllocator,
     env_tree: HashMap<Env, EnvTreeNode>,
     symbol_definitions: HashMap<Env, HashMap<Symbol, Expr>>,
 }
@@ -42,6 +23,7 @@ pub struct EvalTable {
 impl EvalTable {
     pub fn new() -> Self {
         EvalTable {
+            env_allocator: EnvAllocator::new(),
             env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
             symbol_definitions: HashMap::new(),
         }
@@ -94,7 +76,7 @@ impl EvalTable {
     }
 
     pub fn env_create(&mut self, captured_env: Env) -> Env {
-        let env = Env::unique();
+        let env = self.env_allocator.env_alloc();
         self.insert_env(env, captured_env);
         env
     }
@@ -122,6 +104,8 @@ impl EvalTable {
                 }
             }
         }
+        
+        self.env_allocator.env_free(env);
 
         true
     }
@@ -187,5 +171,57 @@ impl EvalTable {
 impl Default for EvalTable {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+#[derive(Debug)]
+struct EnvAllocator {
+    last_id: u64,
+    unused_ids: Vec<u64>
+}
+
+impl EnvAllocator {
+    pub fn new() -> Self {
+        Self {
+            last_id: 1,
+            unused_ids: Vec::new(),
+        }
+    }
+
+    pub const fn env_global() -> Env {
+        Env(0)
+    }
+
+    pub fn env_alloc(&mut self) -> Env {
+        if let Some(id) = self.unused_ids.pop() {
+            Env(id)
+        } else {
+            let id = self.last_id;
+            self.last_id += 1;
+            Env(id)
+        }
+    }
+
+    pub fn env_free(&mut self, env: Env) {
+        if env.0 == self.last_id - 1 {
+            self.last_id -= 1;
+        } else {
+            self.unused_ids.push(env.0);
+        }
+    }
+}
+
+#[derive(Debug)]
+struct EnvTreeNode {
+    captured_env: Env,
+    capturing_count: usize,
+}
+
+impl EnvTreeNode {
+    fn global() -> Self {
+        Self {
+            captured_env: Env::global(),
+            capturing_count: 0,
+        }
     }
 }
