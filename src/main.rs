@@ -30,6 +30,9 @@ const COD: &str = "
 
     (define sum (lambda xs (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))
     (sum list)
+
+    (define x x)
+    x
 ";
 
 fn main() {

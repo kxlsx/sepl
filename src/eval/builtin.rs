@@ -101,7 +101,12 @@ impl Builtin {
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)?;
 
-        eval_table.symbol_define(symbol, env, body);
+        // This prevents recursive definitions 
+        // e.g. '(define x x)'
+        match body {
+            Expr::Symbol(body_symbol) if body_symbol == symbol => (),
+            _ => { eval_table.symbol_define(symbol, env, body); },
+        }
 
         Ok(Expr::Lit(Lit::Nil))
     }
