@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
 use crate::lex::{Error as LexError, Token};
 
-#[derive(Error, Debug)]
+#[derive(Error, Debug, PartialEq, Eq, Hash)]
 pub enum Error {
     #[error("Expected a symbol, found: '{found}'.")]
     ExpectedSymbol { found: String },
@@ -233,16 +233,49 @@ impl Parse for Expr {
 mod tests {
     use super::*;
 
-    // TODO: more parse tests
+    macro_rules! assert_symbol {
+        ($symbol:expr) => {
+            match $symbol {
+                Expr::Symbol(_) => (),
+                _ => panic!("Is not a symbol!"),
+            }
+        };
+    }
+
+    macro_rules! assert_expr_call {
+        ({ head: $head_predicate:expr, tail: [ $($tail_predicate:expr),* ] } = $exp:expr) => {
+            if let Expr::Call(head, tail) = $exp {
+                $head_predicate(*head);
+
+                let mut tailiter = tail.into_iter();
+                $(
+                    $tail_predicate(tailiter.next().expect("Tail is shorter than expected!"));
+                )*
+                if !tailiter.next().is_none() { panic!("Tail is longer than expected!") }
+            } else  { panic!("Parsed something that's not a call!") } 
+        }
+    }
 
     #[test]
     fn parse_nested() -> Result<(), Error> {
-        let source = "(tato mój (w Świnoujściu (żył))) (i (rybakiem morskim) był)";
+        let source = "(Tato mój (w Świnoujsciu żył))";
 
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        //TODO: this
+        assert_expr_call!({
+            head: |h| assert_symbol!(h), 
+            tail: [
+                |t| assert_symbol!(t), 
+                |call| assert_expr_call!({
+                    head: |h| assert_symbol!(h), 
+                    tail: [
+                        |t| assert_symbol!(t),
+                        |t| assert_symbol!(t)
+                    ]
+                } = call)
+            ]
+        } = Expr::parse(&mut parser)?);
 
         Ok(())
     }
@@ -292,6 +325,137 @@ mod tests {
         assert_eq!(
             Expr::parse(&mut parser)?,
             Expr::Lit(Lit::Float(-15e10))
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_err_symbol() -> Result<(), Error> {
+        let source = "true false 8000. ()[]{}";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("true") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("false") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("8000") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("(") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from(")") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("[") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("]") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("{") })
+        );
+        parser.eat();
+        assert_eq!(
+            Symbol::parse(&mut parser),
+            Err(Error::ExpectedSymbol { found: String::from("}") })
+        );
+        parser.eat();
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_err_expected_expr() -> Result<(), Error> {
+        let source = "(function arg1 ())";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Expr::parse(&mut parser),
+            Err(Error::ExpectedExpr),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_err_expected_left() -> Result<(), Error> {
+        let source = ") lorem ipsum";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Expr::parse(&mut parser),
+            Err(Error::ExpectedLeftBracket { found: String::from(")") }),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_err_expected_right() -> Result<(), Error> {
+        let source = "(lorem ipsum(dolor] )";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Expr::parse(&mut parser),
+            Err(Error::ExpectedRightBracket { expected: String::from(")"), found: String::from("]") }),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_err_unexpected_eof() -> Result<(), Error> {
+        let source = "(lorem ipsum(dolor)";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        assert_eq!(
+            Expr::parse(&mut parser),
+            Err(Error::UnexpectedEOF),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn parse_empty() -> Result<(), Error> {
+        let source = "";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+         assert_eq!(
+            Expr::parse(&mut parser),
+            Err(Error::UnexpectedEOF),
         );
 
         Ok(())

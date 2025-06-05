@@ -16,6 +16,10 @@ pub enum Error {
 #[derive(Lex, Debug, Clone, Copy, PartialEq)]
 #[logos(skip r"[ \t\n\f]+")]
 #[logos(error = Error)]
+#[logos(subpattern digit = r"[0-9]")]
+#[logos(subpattern letter = r"[\w--(?&digit)]")]
+#[logos(subpattern special = r"[[:punct:]&&[^(){}\[\]]]")]
+#[logos(subpattern symbol_start = r"((?&letter)|([?&special--\-]))")]
 pub enum Token<'i> {
     #[regex(r"[\(\[\{]", parse_bracket_token)]
     LeftBracket(BracketType),
@@ -24,7 +28,7 @@ pub enum Token<'i> {
     #[regex(
         r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+", // FIXME: make 32e 5.e etc invalid
         parse_float_token,
-        priority = 2
+        priority = 5
     )]
     Float(f64),
     #[token("true")]
@@ -33,7 +37,7 @@ pub enum Token<'i> {
     False,
     #[token("nil")]
     Nil,
-    #[regex(r"[[:alpha:][:punct:]--(--)--\[--\]--{--}]+")]
+    #[regex(r"((?&letter)|(?&special))+|(?&symbol_start)((?&letter)|(?&special)|(?&digit))+")]
     Symbol(&'i str),
 }
 
@@ -81,19 +85,13 @@ mod tests {
 
     macro_rules! assert_token {
         ($lexer:ident, $token:expr) => {
-            assert_eq!($lexer.next().expect("Lexer is empty!")?, $token);
+            assert_eq!($lexer.next().expect("Lexer is empty!"), Ok($token));
         };
     }
 
     macro_rules! assert_empty {
         ($lexer:ident) => {
             assert_eq!($lexer.next(), None)
-        };
-    }
-
-    macro_rules! assert_err {
-        ($lexer:ident, $err:expr) => {
-            assert_eq!($lexer.next().expect("Lexer is empty!"), Err($err));
         };
     }
 
@@ -115,7 +113,7 @@ mod tests {
 
     #[test]
     fn lex_symbols() -> Result<(), Error> {
-        let source = "skrzat\tchur-bo\nmc.flungus ;;; + __ - -abba";
+        let source = "skrzat\tchur-bo\nmc.flungus ;;; + __ - -abba arg1";
         let mut lexer = Token::lexer(source);
 
         assert_token!(lexer, Token::Symbol("skrzat"));
@@ -126,41 +124,7 @@ mod tests {
         assert_token!(lexer, Token::Symbol("__"));
         assert_token!(lexer, Token::Symbol("-"));
         assert_token!(lexer, Token::Symbol("-abba"));
-        assert_empty!(lexer);
-
-        Ok(())
-    }
-
-    #[test]
-    fn lex_symbols_bad() -> Result<(), Error> {
-        let source = "-21. 12. true false nil ([{}]) 😎😎😎 形声形聲 ąęśćłżź";
-        let mut lexer = Token::lexer(source);
-
-        assert_token!(lexer, Token::Float(-21.));
-        assert_token!(lexer, Token::Float(12.));
-        assert_token!(lexer, Token::True);
-        assert_token!(lexer, Token::False);
-        assert_token!(lexer, Token::Nil);
-        assert_token!(lexer, Token::LeftBracket(BracketType::Normal));
-        assert_token!(lexer, Token::LeftBracket(BracketType::Square));
-        assert_token!(lexer, Token::LeftBracket(BracketType::Curly));
-        assert_token!(lexer, Token::RightBracket(BracketType::Curly));
-        assert_token!(lexer, Token::RightBracket(BracketType::Square));
-        assert_token!(lexer, Token::RightBracket(BracketType::Normal));
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
-        assert_err!(lexer, Error::UnexpectedToken);
+        assert_token!(lexer, Token::Symbol("arg1"));
         assert_empty!(lexer);
 
         Ok(())
@@ -191,6 +155,19 @@ mod tests {
         assert_token!(lexer, Token::Float(3e45));
         assert_token!(lexer, Token::Float(-15e10));
         assert_empty!(lexer);
+
+        Ok(())
+    }
+
+    #[test]
+    fn lex_unicode() -> Result<(), Error> {
+        let source = "żółw κοιμηθώ кіт 炸彈";
+        let mut lexer = Token::lexer(source);
+
+        assert_token!(lexer, Token::Symbol("żółw"));
+        assert_token!(lexer, Token::Symbol("κοιμηθώ"));
+        assert_token!(lexer, Token::Symbol("кіт"));
+        assert_token!(lexer, Token::Symbol("炸彈"));
 
         Ok(())
     }
