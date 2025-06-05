@@ -1,4 +1,3 @@
-use std::collections::LinkedList;
 use std::error::Error as ErrorTrait;
 use std::iter::Peekable;
 
@@ -202,10 +201,22 @@ impl Parse for Expr {
 
         parser.eat();
 
-        let mut body = LinkedList::new();
+        let head = 
+            if parser.eat_if_eq(matching_bracket).is_none() {
+                Box::new(Expr::parse(parser).map_err(|err| match err {
+                    Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
+                        found,
+                        expected: matching_bracket.to_string(),
+                    },
+                    _ => err,
+                })?)
+            } else {
+                return Err(Error::ExpectedExpr)
+            };
 
+        let mut body = Vec::new();
         while parser.eat_if_eq(matching_bracket).is_none() {
-            body.push_back(Expr::parse(parser).map_err(|err| match err {
+            body.push(Expr::parse(parser).map_err(|err| match err {
                 Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
                     found,
                     expected: matching_bracket.to_string(),
@@ -214,16 +225,27 @@ impl Parse for Expr {
             })?);
         }
 
-        let head = Box::new(body.pop_front().ok_or(Error::ExpectedExpr)?);
         Ok(Expr::Call(head, body))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super:: *;
+    use super::*;
 
     // TODO: more parse tests
+
+    #[test]
+    fn parse_nested() -> Result<(), Error> {
+        let source = "(tato mój (w Świnoujściu (żył))) (i (rybakiem morskim) był)";
+
+        let mut symbol_table = SymbolTable::new();
+        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
+
+        //TODO: this
+
+        Ok(())
+    }
 
     #[test]
     fn parse_lits() -> Result<(), Error> {

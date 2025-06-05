@@ -1,17 +1,15 @@
-use std::collections::LinkedList;
-
 use super::{Env, Error, EvalTable, Expr, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Procedure {
-    params: LinkedList<Symbol>,
+    params: Vec<Symbol>,
     body: Box<Expr>,
     capture_env: Env,
 }
 
 impl Procedure {
     pub fn new(
-        params: LinkedList<Symbol>,
+        params: Vec<Symbol>,
         body: Box<Expr>,
         parent_env: Env,
         eval_table: &mut EvalTable,
@@ -27,7 +25,7 @@ impl Procedure {
         self,
         eval_table: &mut EvalTable,
         parent_env: Env,
-        args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if self.params.len() != args.len() {
             return Err(Error::IncorrectArgCount);

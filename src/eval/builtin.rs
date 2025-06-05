@@ -1,5 +1,3 @@
-use std::collections::LinkedList;
-
 use strum_macros::{AsRefStr, Display, EnumIter};
 
 use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
@@ -35,7 +33,7 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(eval_table, env, args),
@@ -56,9 +54,9 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        mut args: Vec<Expr>,
     ) -> Result<Expr, Error> {
-        let body = args.pop_back().ok_or(Error::IncorrectArgCount)?;
+        let body = args.pop().ok_or(Error::IncorrectArgCount)?;
 
         let params = args
             .into_iter()
@@ -69,7 +67,7 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })
-            .collect::<Result<LinkedList<Symbol>, Error>>()?;
+            .collect::<Result<Vec<Symbol>, Error>>()?;
 
         Ok(Expr::Procedure(Procedure::new(
             params,
@@ -83,21 +81,23 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let symbol = args.pop_front().ok_or(Error::IncorrectArgCount).map(|e| {
+        let mut args_iter = args.into_iter();
+
+        let symbol = args_iter.next().ok_or(Error::IncorrectArgCount).map(|e| {
             if let Expr::Symbol(symbol) = e.eval(eval_table, env)? {
                 Ok(symbol)
             } else {
                 Err(Error::IncorrectArgType)
             }
         })??;
-        let body = args
-            .pop_front()
+        let body = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)?;
 
@@ -110,26 +110,27 @@ impl Builtin {
         &self,
         _eval_table: &mut EvalTable,
         _env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount);
         }
 
-        Ok(args.pop_front().unwrap())
+        Ok(args.into_iter().next().unwrap())
     }
 
     fn builtin_eval(
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount);
         }
 
-        args.pop_front()
+        args.into_iter()
+            .next()
             .unwrap()
             .eval(eval_table, env)?
             .eval(eval_table, env)
@@ -139,13 +140,13 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        mut args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() <= 1 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let arg_last = args.pop_back().unwrap();
+        let arg_last = args.pop().unwrap();
 
         for arg in args {
             arg.eval(eval_table, env)?;
@@ -158,14 +159,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 3 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let cond = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let cond = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -179,8 +182,8 @@ impl Builtin {
                 }
             })??;
 
-        let exp1 = args.pop_front().ok_or(Error::IncorrectArgCount)?;
-        let exp2 = args.pop_front().ok_or(Error::IncorrectArgCount)?;
+        let exp1 = args_iter.next().ok_or(Error::IncorrectArgCount)?;
+        let exp2 = args_iter.next().ok_or(Error::IncorrectArgCount)?;
 
         Ok(if cond {
             exp1.eval(eval_table, env)?
@@ -193,14 +196,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let a = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let a = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -210,8 +215,8 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })??;
-        let b = args
-            .pop_front()
+        let b = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -229,14 +234,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let a = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let a = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -246,8 +253,8 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })??;
-        let b = args
-            .pop_front()
+        let b = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -265,14 +272,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let a = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let a = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -282,8 +291,8 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })??;
-        let b = args
-            .pop_front()
+        let b = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -301,14 +310,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let a = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let a = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -318,8 +329,8 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })??;
-        let b = args
-            .pop_front()
+        let b = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -337,14 +348,16 @@ impl Builtin {
         &self,
         eval_table: &mut EvalTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount);
         }
 
-        let a = args
-            .pop_front()
+        let mut args_iter = args.into_iter();
+
+        let a = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {
@@ -354,8 +367,8 @@ impl Builtin {
                     Err(Error::IncorrectArgType)
                 }
             })??;
-        let b = args
-            .pop_front()
+        let b = args_iter
+            .next()
             .ok_or(Error::IncorrectArgCount)?
             .eval(eval_table, env)
             .map(|e| {

@@ -1,4 +1,4 @@
-use std::{collections::LinkedList, hash::Hash};
+use std::hash::Hash;
 
 use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Symbol};
 
@@ -6,7 +6,7 @@ use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Symbol};
 pub enum Expr {
     Symbol(Symbol),
     Lit(Lit),
-    Call(Box<Expr>, LinkedList<Expr>),
+    Call(Box<Expr>, Vec<Expr>),
     Procedure(Procedure),
     Builtin(Builtin),
 }
