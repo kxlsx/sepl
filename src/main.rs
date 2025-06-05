@@ -1,6 +1,7 @@
 use sepl::eval::{EvalTable, SymbolTable};
 use sepl::lex::{Lex, Token};
 use sepl::parse::Parser;
+use sepl::stringify::Stringify;
 
 const COD: &str = "
     (define pi (- 4.1415 1.0))
@@ -37,24 +38,26 @@ const COD: &str = "
 
 fn main() {
     let mut symbol_table = SymbolTable::new();
-    let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
 
     let lex = Token::lexer(COD);
     let parser = Parser::new(lex, &mut symbol_table);
 
-    let env_global = eval_table.env_global();
-    for parsed_expr in parser {
-        if let Err(e) = parsed_expr {
+    let mut parsed_exprs = Vec::new();
+    for expr in parser {
+        if let Err(e) = expr {
             println!("{}", e);
             break;
         }
-        let expr = parsed_expr.unwrap();
+        parsed_exprs.push(expr.unwrap());
+    }
 
+    let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+    let env_global = eval_table.env_global();
+    for expr in parsed_exprs {
         let evaluated_expr = expr.eval(&mut eval_table, env_global);
         match evaluated_expr {
-            Ok(e) => println!("{:?}", e),
+            Ok(e) => println!("{}", e.stringify(&symbol_table)),
             Err(e) => println!("{}", e),
         }
-        println!("count: {}", eval_table.env_count());
     }
 }

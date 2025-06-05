@@ -48,4 +48,12 @@ impl Procedure {
     pub fn captured_env(&self) -> Env {
         self.capture_env
     }
+
+    pub fn params(&self) -> &[Symbol] {
+        &self.params
+    }
+
+    pub fn body(&self) -> &Expr {
+        &self.body
+    }
 }

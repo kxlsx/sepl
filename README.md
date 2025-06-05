@@ -2,7 +2,6 @@
 ## TODO:
 - repl
 - **DOCS (!)**
-- pretty print expressions (EvalDisplay trait or something)
 - better error messages
 - clean up + add more builtins
 - add ints
@@ -10,4 +9,4 @@
 - cli
 - figure out lib interface
 - maybe get rid of bool?
-- make linked lists vecs
+- stack overflow handling, iterative evaluation (manual stack)
