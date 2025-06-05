@@ -28,7 +28,11 @@ impl Procedure {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if self.params.len() != args.len() {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expected: self.params.len(),
+                found: args.len(),
+                expr: Expr::Procedure(self),
+            });
         }
 
         let env = eval_table.env_create(self.capture_env);

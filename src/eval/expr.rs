@@ -2,6 +2,31 @@ use std::hash::Hash;
 
 use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Symbol};
 
+macro_rules! expr_type_str {
+    (Symbol) => {
+        "symbol"
+    };
+    (Lit::Bool) => {
+        "bool"
+    };
+    (Lit::Float) => {
+        "float"
+    };
+    (Lit::Nil) => {
+        "nil"
+    };
+    (Procedure) => {
+        "procedure"
+    };
+    (Builtin) => {
+        "procedure"
+    };
+    (Call) => {
+        "procedure call"
+    };
+}
+pub(super) use expr_type_str;
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Symbol(Symbol),
@@ -24,8 +49,22 @@ impl Expr {
             Expr::Call(head, tail) => match head.eval(eval_table, env)? {
                 Expr::Procedure(proc) => proc.eval(eval_table, env, tail),
                 Expr::Builtin(builtin) => builtin.eval(eval_table, env, tail),
-                _ => Err(Error::NotCallable),
+                uncallable_expr => Err(Error::NotCallable {
+                    expr: uncallable_expr,
+                }),
             },
+        }
+    }
+
+    pub const fn as_type_str(&self) -> &'static str {
+        match self {
+            Expr::Lit(Lit::Bool(_)) => expr_type_str!(Lit::Bool),
+            Expr::Lit(Lit::Float(_)) => expr_type_str!(Lit::Float),
+            Expr::Lit(Lit::Nil) => expr_type_str!(Lit::Nil),
+            Expr::Symbol(_) => expr_type_str!(Symbol),
+            Expr::Procedure(_) => expr_type_str!(Procedure),
+            Expr::Builtin(_) => expr_type_str!(Builtin),
+            Expr::Call(..) => expr_type_str!(Call),
         }
     }
 }
@@ -75,9 +114,9 @@ mod tests {
             with symbol_table, eval_table:
             "(define = (lambda a b (if (<= a b) (<= b a) false)))"
                 => Expr::Lit(Lit::Nil),
-            "(define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))" 
+            "(define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
                 => Expr::Lit(Lit::Nil),
-            "(fact 10.)" 
+            "(fact 10.)"
                 => Expr::Lit(Lit::Float(3628800.0)),
         );
 
@@ -91,15 +130,15 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, eval_table:
-            "(define = (lambda a b (if (<= a b) (<= b a) false)))" 
+            "(define = (lambda a b (if (<= a b) (<= b a) false)))"
                 => Expr::Lit(Lit::Nil),
-            "(define fib (lambda a b n (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))" 
+            "(define fib (lambda a b n (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
                 => Expr::Lit(Lit::Nil),
-            "(define fib_bad (lambda n (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))" 
+            "(define fib_bad (lambda n (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))"
                 => Expr::Lit(Lit::Nil),
-            "(fib 0. 1. 10.)" 
+            "(fib 0. 1. 10.)"
                 => Expr::Lit(Lit::Float(55.)),
-            "(fib_bad 10.)" 
+            "(fib_bad 10.)"
                 => Expr::Lit(Lit::Float(55.)),
         );
 
@@ -113,9 +152,9 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, eval_table:
-            "(define f (lambda a (lambda b (lambda c (+ a (+ b c))))))" 
+            "(define f (lambda a (lambda b (lambda c (+ a (+ b c))))))"
                 => Expr::Lit(Lit::Nil),
-            "(((f 2.) 2.) 2.)" 
+            "(((f 2.) 2.) 2.)"
                 => Expr::Lit(Lit::Float(6.)),
         );
 
@@ -129,17 +168,17 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, eval_table:
-            "(define cons (lambda x y (lambda m (m x y))))" 
+            "(define cons (lambda x y (lambda m (m x y))))"
                 => Expr::Lit(Lit::Nil),
-            "(define car (lambda z (z (lambda p q p))))" 
+            "(define car (lambda z (z (lambda p q p))))"
                 => Expr::Lit(Lit::Nil),
-            "(define cdr (lambda z (z (lambda p q q))))" 
+            "(define cdr (lambda z (z (lambda p q q))))"
                 => Expr::Lit(Lit::Nil),
-            "(define list (cons 1.0 (cons 2. (cons 3. nil))))" 
+            "(define list (cons 1.0 (cons 2. (cons 3. nil))))"
                 => Expr::Lit(Lit::Nil),
-            "(define sum (lambda xs (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))" 
+            "(define sum (lambda xs (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
                 => Expr::Lit(Lit::Nil),
-            "(sum list)" 
+            "(sum list)"
                 => Expr::Lit(Lit::Float(6.)),
         );
 

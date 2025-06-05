@@ -1,4 +1,4 @@
-use std::{hash::Hash, fmt::Display};
+use std::{fmt::Display, hash::Hash};
 
 #[derive(Debug, Clone, Copy)]
 pub enum Lit {

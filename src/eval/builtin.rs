@@ -1,6 +1,6 @@
 use strum_macros::{AsRefStr, Display, EnumIter};
 
-use super::{Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
+use super::{expr_type_str, Env, Error, EvalTable, Expr, Lit, Procedure, Symbol};
 
 #[derive(EnumIter, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
@@ -56,16 +56,21 @@ impl Builtin {
         env: Env,
         mut args: Vec<Expr>,
     ) -> Result<Expr, Error> {
-        let body = args.pop().ok_or(Error::IncorrectArgCount)?;
+        let body = args.pop().ok_or(Error::IncorrectArgCount {
+            expr: Expr::Builtin(Builtin::Lambda),
+            expected: 1,
+            found: 0,
+        })?;
 
         let params = args
             .into_iter()
-            .map(|e| {
-                if let Expr::Symbol(symbol) = e.eval(eval_table, env)? {
-                    Ok(symbol)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e.eval(eval_table, env)? {
+                Expr::Symbol(symbol) => Ok(symbol),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Lambda,
+                    expected: expr_type_str!(Symbol),
+                    found: other_expr.as_type_str(),
+                }),
             })
             .collect::<Result<Vec<Symbol>, Error>>()?;
 
@@ -84,28 +89,35 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Define),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
-        let symbol = args_iter.next().ok_or(Error::IncorrectArgCount).map(|e| {
-            if let Expr::Symbol(symbol) = e.eval(eval_table, env)? {
-                Ok(symbol)
-            } else {
-                Err(Error::IncorrectArgType)
-            }
-        })??;
-        let body = args_iter
+        let symbol = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
-            .eval(eval_table, env)?;
+            .map(|e| match e.eval(eval_table, env)? {
+                Expr::Symbol(symbol) => Ok(symbol),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Define,
+                    expected: expr_type_str!(Symbol),
+                    found: other_expr.as_type_str(),
+                }),
+            })
+            .unwrap()?;
+        let body = args_iter.next().unwrap().eval(eval_table, env)?;
 
-        // This prevents recursive definitions 
+        // This prevents recursive definitions
         // e.g. '(define x x)'
         match body {
             Expr::Symbol(body_symbol) if body_symbol == symbol => (),
-            _ => { eval_table.symbol_define(symbol, env, body); },
+            _ => {
+                eval_table.symbol_define(symbol, env, body);
+            }
         }
 
         Ok(Expr::Lit(Lit::Nil))
@@ -118,7 +130,11 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Quote),
+                expected: 1,
+                found: args.len(),
+            });
         }
 
         Ok(args.into_iter().next().unwrap())
@@ -131,7 +147,11 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Eval),
+                expected: 1,
+                found: args.len(),
+            });
         }
 
         args.into_iter()
@@ -148,7 +168,11 @@ impl Builtin {
         mut args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() <= 1 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Do),
+                expected: 1,
+                found: 0,
+            });
         }
 
         let arg_last = args.pop().unwrap();
@@ -167,28 +191,28 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 3 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::IfElse),
+                expected: 3,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
-        let cond = args_iter
-            .next()
-            .ok_or(Error::IncorrectArgCount)?
-            .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Bool(cond)) = e {
-                    Ok(cond)
-                } else if let Expr::Lit(Lit::Nil) = e {
-                    //FIXME: temporary, maybe add 'ifnull'?
-                    Ok(false)
-                } else {
-                    Ok(true)
-                }
-            })??;
+        let cond = args_iter.next().unwrap().eval(eval_table, env).map(|e| {
+            if let Expr::Lit(Lit::Bool(cond)) = e {
+                Ok(cond)
+            } else if let Expr::Lit(Lit::Nil) = e {
+                //FIXME: temporary, maybe add 'ifnull'?
+                Ok(false)
+            } else {
+                Ok(true)
+            }
+        })??;
 
-        let exp1 = args_iter.next().ok_or(Error::IncorrectArgCount)?;
-        let exp2 = args_iter.next().ok_or(Error::IncorrectArgCount)?;
+        let exp1 = args_iter.next().unwrap();
+        let exp2 = args_iter.next().unwrap();
 
         Ok(if cond {
             exp1.eval(eval_table, env)?
@@ -204,32 +228,38 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Leq),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
         let a = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Leq,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
         let b = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Leq,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
 
         Ok(Expr::Lit(Lit::Bool(a <= b)))
@@ -242,32 +272,38 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Add),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
         let a = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Add,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
         let b = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Add,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
 
         Ok(Expr::Lit(Lit::Float(a + b)))
@@ -280,32 +316,38 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Sub),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
         let a = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Sub,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
         let b = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Sub,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
 
         Ok(Expr::Lit(Lit::Float(a - b)))
@@ -318,32 +360,38 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Mul),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
         let a = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Mul,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
         let b = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Mul,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
 
         Ok(Expr::Lit(Lit::Float(a * b)))
@@ -356,32 +404,38 @@ impl Builtin {
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
-            return Err(Error::IncorrectArgCount);
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Div),
+                expected: 2,
+                found: args.len(),
+            });
         }
 
         let mut args_iter = args.into_iter();
 
         let a = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Div,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
         let b = args_iter
             .next()
-            .ok_or(Error::IncorrectArgCount)?
+            .unwrap()
             .eval(eval_table, env)
-            .map(|e| {
-                if let Expr::Lit(Lit::Float(cond)) = e {
-                    Ok(cond)
-                } else {
-                    Err(Error::IncorrectArgType)
-                }
+            .map(|e| match e {
+                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Div,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
             })??;
 
         Ok(Expr::Lit(Lit::Float(a / b)))

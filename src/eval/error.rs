@@ -1,12 +1,22 @@
 use thiserror::Error;
 
+use super::{Builtin, Expr};
+
 // TODO: better errors
-#[derive(Error, Debug)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
-    #[error("TODO: wrong arg count")]
-    IncorrectArgCount,
-    #[error("TODO: wrong arg type")]
-    IncorrectArgType,
-    #[error("TODO: not callable")]
-    NotCallable,
+    #[error("Expression expects <{expected}> arguments, not <{found}>.")]
+    IncorrectArgCount {
+        expr: Expr,
+        expected: usize,
+        found: usize,
+    },
+    #[error("Expression expects argument of type <{expected}>, not <{found}>.")]
+    IncorrectArgType {
+        builtin: Builtin,
+        expected: &'static str,
+        found: &'static str,
+    },
+    #[error("Expression is not callable.")]
+    NotCallable { expr: Expr },
 }

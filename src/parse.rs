@@ -201,18 +201,17 @@ impl Parse for Expr {
 
         parser.eat();
 
-        let head = 
-            if parser.eat_if_eq(matching_bracket).is_none() {
-                Box::new(Expr::parse(parser).map_err(|err| match err {
-                    Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
-                        found,
-                        expected: matching_bracket.to_string(),
-                    },
-                    _ => err,
-                })?)
-            } else {
-                return Err(Error::ExpectedExpr)
-            };
+        let head = if parser.eat_if_eq(matching_bracket).is_none() {
+            Box::new(Expr::parse(parser).map_err(|err| match err {
+                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
+                    found,
+                    expected: matching_bracket.to_string(),
+                },
+                _ => err,
+            })?)
+        } else {
+            return Err(Error::ExpectedExpr);
+        };
 
         let mut body = Vec::new();
         while parser.eat_if_eq(matching_bracket).is_none() {
@@ -252,7 +251,7 @@ mod tests {
                     $tail_predicate(tailiter.next().expect("Tail is shorter than expected!"));
                 )*
                 if !tailiter.next().is_none() { panic!("Tail is longer than expected!") }
-            } else  { panic!("Parsed something that's not a call!") } 
+            } else  { panic!("Parsed something that's not a call!") }
         }
     }
 
@@ -287,45 +286,21 @@ mod tests {
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Bool(true))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Bool(true)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Bool(false))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Bool(false)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Nil)
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Nil));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Float(1.443))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(1.443)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Float(-1.12))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(-1.12)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Float(-4231.))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(-4231.)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Float(1e-10))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(1e-10)));
 
-        assert_eq!(
-            Expr::parse(&mut parser)?,
-            Expr::Lit(Lit::Float(-15e10))
-        );
+        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(-15e10)));
 
         Ok(())
     }
@@ -339,47 +314,65 @@ mod tests {
 
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("true") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("true")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("false") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("false")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("8000") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("8000")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("(") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("(")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from(")") })
+            Err(Error::ExpectedSymbol {
+                found: String::from(")")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("[") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("[")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("]") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("]")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("{") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("{")
+            })
         );
         parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol { found: String::from("}") })
+            Err(Error::ExpectedSymbol {
+                found: String::from("}")
+            })
         );
         parser.eat();
 
@@ -393,10 +386,7 @@ mod tests {
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        assert_eq!(
-            Expr::parse(&mut parser),
-            Err(Error::ExpectedExpr),
-        );
+        assert_eq!(Expr::parse(&mut parser), Err(Error::ExpectedExpr),);
 
         Ok(())
     }
@@ -410,7 +400,9 @@ mod tests {
 
         assert_eq!(
             Expr::parse(&mut parser),
-            Err(Error::ExpectedLeftBracket { found: String::from(")") }),
+            Err(Error::ExpectedLeftBracket {
+                found: String::from(")")
+            }),
         );
 
         Ok(())
@@ -425,7 +417,10 @@ mod tests {
 
         assert_eq!(
             Expr::parse(&mut parser),
-            Err(Error::ExpectedRightBracket { expected: String::from(")"), found: String::from("]") }),
+            Err(Error::ExpectedRightBracket {
+                expected: String::from(")"),
+                found: String::from("]")
+            }),
         );
 
         Ok(())
@@ -438,10 +433,7 @@ mod tests {
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        assert_eq!(
-            Expr::parse(&mut parser),
-            Err(Error::UnexpectedEOF),
-        );
+        assert_eq!(Expr::parse(&mut parser), Err(Error::UnexpectedEOF),);
 
         Ok(())
     }
@@ -453,10 +445,7 @@ mod tests {
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-         assert_eq!(
-            Expr::parse(&mut parser),
-            Err(Error::UnexpectedEOF),
-        );
+        assert_eq!(Expr::parse(&mut parser), Err(Error::UnexpectedEOF),);
 
         Ok(())
     }

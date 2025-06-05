@@ -33,7 +33,11 @@ const COD: &str = "
     (sum list)
 
     (define x x)
-    x
+    
+    (x)
+
+    ((quote (+ 1. 0.)) (quote (x)) 2.)
+    (lambda)
 ";
 
 fn main() {
@@ -56,8 +60,8 @@ fn main() {
     for expr in parsed_exprs {
         let evaluated_expr = expr.eval(&mut eval_table, env_global);
         match evaluated_expr {
-            Ok(e) => println!("{}", e.stringify(&symbol_table)),
-            Err(e) => println!("{}", e),
+            Ok(expr) => println!("{}", expr.stringify(&symbol_table)),
+            Err(err) => println!("{}", err.stringify(&symbol_table)),
         }
     }
 }

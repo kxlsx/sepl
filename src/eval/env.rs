@@ -104,7 +104,7 @@ impl EvalTable {
                 }
             }
         }
-        
+
         self.env_allocator.env_free(env);
 
         true
@@ -177,7 +177,7 @@ impl Default for EvalTable {
 #[derive(Debug)]
 struct EnvAllocator {
     last_id: u64,
-    unused_ids: Vec<u64>
+    unused_ids: Vec<u64>,
 }
 
 impl EnvAllocator {
