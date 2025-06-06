@@ -1,6 +1,7 @@
 # DO 7 CZERWCA
 ## TODO:
-- repl
+- cli
+- repl commands
 - **DOCS (!)**
 - clean up + add more builtins
 - add ints

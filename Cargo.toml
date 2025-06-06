@@ -1,2 +1,3 @@
 [workspace]
 members = ["sepl_lib", "sepl_bin"]
+resolver = "2"
