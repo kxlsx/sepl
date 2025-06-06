@@ -1,10 +1,10 @@
-mod builtin;
-mod env;
-mod error;
-mod expr;
-mod lit;
-mod proc;
-mod symbol;
+pub mod builtin;
+pub mod env;
+pub mod error;
+pub mod expr;
+pub mod lit;
+pub mod proc;
+pub mod symbol;
 
 pub use builtin::*;
 pub use env::*;

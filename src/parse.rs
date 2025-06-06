@@ -2,7 +2,7 @@ use logos::Logos;
 use thiserror::Error;
 
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
-use crate::lex::{Error as LexError, Token, Lexer};
+use crate::lex::{Error as LexError, Lexer, Token};
 
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
@@ -19,7 +19,7 @@ pub enum Error {
     #[error("Unexpected EOF.")]
     UnexpectedEOF,
     #[error("Unexpected token: '{token}'.")]
-    UnexpectedToken{token: String},
+    UnexpectedToken { token: String },
 }
 
 pub struct Parser<'s, 'i> {
@@ -31,22 +31,89 @@ pub struct Parser<'s, 'i> {
 impl<'s, 'i> Parser<'s, 'i> {
     pub fn new(lexer: Lexer<'i, Token<'i>>, symbol_table: &'s mut SymbolTable) -> Self {
         Parser {
-            lexer: lexer,
+            lexer,
             symbol_table,
-            lookahead_token: None
+            lookahead_token: None,
         }
     }
 
     pub fn parse_expr(&mut self) -> Result<Expr, Error> {
-        Expr::parse(self)
+        if let Ok(symbol) = self.parse_symbol() {
+            return Ok(Expr::Symbol(symbol));
+        }
+
+        if let Ok(lit) = self.parse_lit() {
+            return Ok(Expr::Lit(lit));
+        }
+
+        let matching_bracket = match self.lookahead() {
+            Some(Ok(Token::LeftBracket(bracket_type))) => Token::RightBracket(bracket_type),
+            Some(Ok(other_token)) => {
+                return Err(Error::ExpectedLeftBracket {
+                    found: other_token.to_string(),
+                })
+            }
+            Some(Err(lex_error)) => return Err(lex_error),
+            None => return Err(Error::UnexpectedEOF),
+        };
+
+        self.eat();
+
+        let head = if self.eat_if_eq(matching_bracket).is_none() {
+            Box::new(self.parse_expr().map_err(|err| match err {
+                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
+                    found,
+                    expected: matching_bracket.to_string(),
+                },
+                _ => err,
+            })?)
+        } else {
+            return Err(Error::ExpectedExpr);
+        };
+
+        let mut body = Vec::new();
+        while self.eat_if_eq(matching_bracket).is_none() {
+            body.push(self.parse_expr().map_err(|err| match err {
+                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
+                    found,
+                    expected: matching_bracket.to_string(),
+                },
+                _ => err,
+            })?);
+        }
+
+        Ok(Expr::Call(head, body))
     }
 
     pub fn parse_symbol(&mut self) -> Result<Symbol, Error> {
-        Symbol::parse(self)
+        match self.lookahead() {
+            Some(Ok(Token::Symbol(name))) => {
+                self.eat();
+                Ok(self.symbol_table.intern(name))
+            }
+            Some(Ok(other_token)) => Err(Error::ExpectedSymbol {
+                found: other_token.to_string(),
+            }),
+            Some(Err(lex_error)) => Err(lex_error),
+            None => Err(Error::UnexpectedEOF),
+        }
     }
 
     pub fn parse_lit(&mut self) -> Result<Lit, Error> {
-        Lit::parse(self)
+        let lit = match self.lookahead() {
+            Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
+            Some(Ok(Token::True)) => Ok(Lit::Bool(true)),
+            Some(Ok(Token::False)) => Ok(Lit::Bool(false)),
+            Some(Ok(Token::Nil)) => Ok(Lit::Nil),
+            Some(Ok(other_token)) => Err(Error::ExpectedLit {
+                found: other_token.to_string(),
+            }),
+            Some(Err(lex_error)) => Err(lex_error),
+            None => Err(Error::UnexpectedEOF),
+        }?;
+
+        self.eat();
+        Ok(lit)
     }
 
     pub fn lookahead(&mut self) -> Option<Result<Token<'i>, Error>> {
@@ -77,17 +144,22 @@ impl<'s, 'i> Parser<'s, 'i> {
 
     fn lookahead_token(&mut self) -> Option<Result<Token<'i>, Error>> {
         if self.lookahead_token.is_none() {
-            self.lookahead_token = Some(self.lexer.next());    
+            self.lookahead_token = Some(self.lexer.next());
         }
 
         self.parse_result_from_lex_result(self.lookahead_token.unwrap())
     }
 
-    fn parse_result_from_lex_result(&self, lex_result: Option<Result<Token<'i>, LexError>>) -> Option<Result<Token<'i>, Error>> {
+    fn parse_result_from_lex_result(
+        &self,
+        lex_result: Option<Result<Token<'i>, LexError>>,
+    ) -> Option<Result<Token<'i>, Error>> {
         match lex_result {
             None => None,
             Some(Ok(token)) => Some(Ok(token)),
-            Some(Err(LexError::UnexpectedToken)) => Some(Err(Error::UnexpectedToken { token: String::from(self.lexer.slice()) }))
+            Some(Err(LexError::UnexpectedToken)) => Some(Err(Error::UnexpectedToken {
+                token: String::from(self.lexer.slice()),
+            })),
         }
     }
 }
@@ -101,6 +173,31 @@ impl<'s, 'i> Iterator for Parser<'s, 'i> {
         } else {
             Some(self.parse_expr())
         }
+    }
+}
+
+pub trait Parse
+where
+    Self: Sized,
+{
+    fn parse(parser: &mut Parser) -> Result<Self, Error>;
+}
+
+impl Parse for Symbol {
+    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+        parser.parse_symbol()
+    }
+}
+
+impl Parse for Lit {
+    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+        parser.parse_lit()
+    }
+}
+
+impl Parse for Expr {
+    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+        parser.parse_expr()
     }
 }
 
@@ -126,98 +223,6 @@ impl ParseFrom<&str> for Symbol {
 impl ParseFrom<&str> for Lit {
     fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
         Lit::parse(&mut Parser::new(Token::lexer(value), symbol_table))
-    }
-}
-
-pub trait Parse
-where
-    Self: Sized,
-{
-    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error>;
-}
-
-impl Parse for Symbol {
-    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
-        match parser.lookahead() {
-            Some(Ok(Token::Symbol(name))) => {
-                parser.eat();
-                Ok(parser.symbol_table.intern(name))
-            }
-            Some(Ok(other_token)) => Err(Error::ExpectedSymbol {
-                found: other_token.to_string(),
-            }),
-            Some(Err(lex_error)) => Err(lex_error),
-            None => Err(Error::UnexpectedEOF),
-        }
-    }
-}
-
-impl Parse for Lit {
-    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
-        let lit = match parser.lookahead() {
-            Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
-            Some(Ok(Token::True)) => Ok(Lit::Bool(true)),
-            Some(Ok(Token::False)) => Ok(Lit::Bool(false)),
-            Some(Ok(Token::Nil)) => Ok(Lit::Nil),
-            Some(Ok(other_token)) => Err(Error::ExpectedLit {
-                found: other_token.to_string(),
-            }),
-            Some(Err(lex_error)) => Err(lex_error),
-            None => Err(Error::UnexpectedEOF),
-        }?;
-
-        parser.eat();
-        Ok(lit)
-    }
-}
-
-impl Parse for Expr {
-    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
-        if let Ok(symbol) = Symbol::parse(parser) {
-            return Ok(Expr::Symbol(symbol));
-        }
-
-        if let Ok(lit) = Lit::parse(parser) {
-            return Ok(Expr::Lit(lit));
-        }
-
-        let matching_bracket = match parser.lookahead() {
-            Some(Ok(Token::LeftBracket(bracket_type))) => Token::RightBracket(bracket_type),
-            Some(Ok(other_token)) => {
-                return Err(Error::ExpectedLeftBracket {
-                    found: other_token.to_string(),
-                })
-            }
-            Some(Err(lex_error)) => return Err(lex_error.into()),
-            None => return Err(Error::UnexpectedEOF),
-        };
-
-        parser.eat();
-
-        let head = if parser.eat_if_eq(matching_bracket).is_none() {
-            Box::new(Expr::parse(parser).map_err(|err| match err {
-                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
-                    found,
-                    expected: matching_bracket.to_string(),
-                },
-                _ => err,
-            })?)
-        } else {
-            return Err(Error::ExpectedExpr);
-        };
-
-        let mut body = Vec::new();
-        while parser.eat_if_eq(matching_bracket).is_none() {
-            body.push(Expr::parse(parser).map_err(|err| match err {
-                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
-                    found,
-                    expected: matching_bracket.to_string(),
-                },
-                _ => err,
-            })?);
-        }
-
-        Ok(Expr::Call(head, body))
     }
 }
 

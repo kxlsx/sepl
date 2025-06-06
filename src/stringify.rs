@@ -1,10 +1,20 @@
-use crate::eval::{Error as EvalError, Expr, Procedure, SymbolTable};
+use crate::eval::{Error as EvalError, Expr, Procedure, Symbol, SymbolTable};
 
-pub trait Stringify {
-    fn stringify(&self, symbol_table: &SymbolTable) -> String;
+pub trait Resolver<S> {
+    fn resolve(&self, symbol: S) -> &str;
 }
 
-impl Stringify for Expr {
+pub trait Stringify<S, R: Resolver<S>> {
+    fn stringify(&self, resolver: &SymbolTable) -> String;
+}
+
+impl Resolver<Symbol> for SymbolTable {
+    fn resolve(&self, symbol: Symbol) -> &str {
+        SymbolTable::resolve(self, symbol)
+    }
+}
+
+impl Stringify<Symbol, SymbolTable> for Expr {
     fn stringify(&self, symbol_table: &SymbolTable) -> String {
         match self {
             Expr::Symbol(symbol) => String::from(symbol_table.resolve(*symbol)),
@@ -25,7 +35,7 @@ impl Stringify for Expr {
     }
 }
 
-impl Stringify for Procedure {
+impl Stringify<Symbol, SymbolTable> for Procedure {
     fn stringify(&self, symbol_table: &SymbolTable) -> String {
         let args_str = self.params().iter().fold(String::new(), |mut buf, symbol| {
             buf.push(' ');
@@ -39,7 +49,7 @@ impl Stringify for Procedure {
     }
 }
 
-impl Stringify for EvalError {
+impl Stringify<Symbol, SymbolTable> for EvalError {
     fn stringify(&self, symbol_table: &SymbolTable) -> String {
         match self {
             ref err @ EvalError::IncorrectArgCount { ref expr, .. } => {

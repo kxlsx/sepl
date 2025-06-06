@@ -1,4 +1,4 @@
-use super::{Env, Error, EnvTable, Expr, Symbol};
+use super::{Env, EnvTable, Error, Expr, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Procedure {

@@ -1,6 +1,6 @@
 use strum_macros::{AsRefStr, Display, EnumIter};
 
-use super::{expr_type_str, Env, Error, EnvTable, Expr, Lit, Procedure, Symbol};
+use super::{expr_type_str, Env, EnvTable, Error, Expr, Lit, Procedure, Symbol};
 
 #[derive(EnumIter, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
@@ -29,12 +29,7 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    pub fn eval(
-        &self,
-        env_table: &mut EnvTable,
-        env: Env,
-        args: Vec<Expr>,
-    ) -> Result<Expr, Error> {
+    pub fn eval(&self, env_table: &mut EnvTable, env: Env, args: Vec<Expr>) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(env_table, env, args),
             Builtin::Define => self.builtin_define(env_table, env, args),

@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use super::{Builtin, Env, Error, EnvTable, Lit, Procedure, Symbol};
+use super::{Builtin, Env, EnvTable, Error, Lit, Procedure, Symbol};
 
 macro_rules! expr_type_str {
     (Symbol) => {
@@ -83,7 +83,7 @@ mod tests {
                 $string,
                 &mut $symbol_table
             ).expect("Parse error!");
-            
+
             let tmp_eval = tmp.eval(&mut $env_table, Env::global());
             if let $expected = tmp_eval {} else {panic!("Did not expect {:?}", tmp_eval)}
             })+
@@ -133,19 +133,19 @@ mod tests {
             with symbol_table, env_table:
             "(define x 2.0)" => Ok(Expr::Lit(Lit::Nil)),
             "(define y 4096.0)" => Ok(Expr::Lit(Lit::Nil)),
-            "((lambda x (do (define y 1.) (+ x y))) 0.5)" 
-                => Err(Error::IncorrectArgType { 
+            "((lambda x (do (define y 1.) (+ x y))) 0.5)"
+                => Err(Error::IncorrectArgType {
                     builtin: Builtin::Lambda,
                     expected: expr_type_str!(Symbol),
                     found: expr_type_str!(Lit::Float),
                 }),
-            "((lambda (quote x) (do (define y 1.) (+ x y))) 0.5)" 
-                => Err(Error::IncorrectArgType { 
+            "((lambda (quote x) (do (define y 1.) (+ x y))) 0.5)"
+                => Err(Error::IncorrectArgType {
                     builtin: Builtin::Define,
                     expected: expr_type_str!(Symbol),
                     found: expr_type_str!(Lit::Float),
                 }),
-            "((lambda (quote x) (do (define (quote y) 1.) (+ x y))) 0.5)" 
+            "((lambda (quote x) (do (define (quote y) 1.) (+ x y))) 0.5)"
                 => Ok(Expr::Lit(Lit::Float(1.5))),
             "x" => Ok(Expr::Lit(Lit::Float(2.))),
             "y" => Ok(Expr::Lit(Lit::Float(4096.))),
