@@ -2,7 +2,6 @@ use thiserror::Error;
 
 use super::{Builtin, Expr};
 
-// TODO: better errors
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     #[error("Expression expects <{expected}> arguments, not <{found}>.")]
