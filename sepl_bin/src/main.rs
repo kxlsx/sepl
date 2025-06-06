@@ -1,6 +1,8 @@
-mod cli;
+use anyhow::Result;
+
 mod repl;
 
-fn main() {
-    cli::process_args().unwrap();
+fn main() -> Result<()> {
+    // TODO: print errors nicely
+    repl::repl()
 }

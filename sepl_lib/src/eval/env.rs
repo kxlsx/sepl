@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Iter as HashMapIter};
 
 use strum::IntoEnumIterator;
 
@@ -65,6 +65,12 @@ impl EnvTable {
             (_, Some(expr)) => Some(expr),
             (env, None) => self.symbol_definition(symbol, self.get_captured_env(env)),
         }
+    }
+
+    pub fn symbols_global(&self) -> Option<HashMapIter<Symbol, Expr>> {
+        self.symbol_definitions
+        .get(&self.env_global())
+        .map(|map| map.iter())
     }
 
     pub fn env_global(&self) -> Env {

@@ -2,10 +2,10 @@
 ## TODO:
 - cli
 - repl commands
+- better repl errors
 - **DOCS (!)**
 - clean up + add more builtins
 - add ints
 - tests
-- cli
 - figure out lib interface
 - stack overflow handling, iterative evaluation (manual stack)

@@ -6,6 +6,27 @@ use sepl_lib::{
     stringify::Stringify,
 };
 
+// TODO: this file is a bit sad, but I'm currently short on time
+
+enum ReplCommand {
+    Eval(Box<[Expr]>),
+    Quit,
+    PrintDefined,
+    Help,
+}
+
+fn print_header() {
+    // TODO: make this more fun
+    println!("Welcome to {} v{} interactive REPL.\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+}
+
+fn print_help() {
+    // FIXME: this needs to be checked with ReplCommands
+    println!(":q | :quit    => Exit the program.");
+    println!(":d | :defined => Print symbol definitions");
+    println!(":h | :help    => Print this message.");
+}
+
 pub fn repl() -> Result<()> {
     let mut symbol_table = SymbolTable::new();
     let mut env_table = EnvTable::with_builtins(&mut symbol_table);
@@ -15,32 +36,37 @@ pub fn repl() -> Result<()> {
 
     print_header();
     loop {
-        let parsed_exprs = match read_parse(&reader_interface, &mut symbol_table)? {
-            Some(expr) => expr,
-            None => break,
+        match read_repl_command(&reader_interface, &mut symbol_table)? {
+            ReplCommand::Eval(parsed_exprs) => {
+                for parsed_expr in parsed_exprs {
+                    let evald_expr = parsed_expr.eval(&mut env_table, env_global);
+                    match evald_expr {
+                        Ok(expr) => print!("{} ", expr.stringify(&symbol_table)),
+                        Err(err) => println!("{}", err.stringify(&symbol_table)),
+                    }
+                }
+                println!();
+            },
+            ReplCommand::PrintDefined => {
+                let symbol_defs = env_table.symbols_global();
+                if let Some(defs) = symbol_defs {
+                    for (symbol, expr) in  defs{
+                        println!("'{}' => {}", symbol_table.resolve(*symbol), expr.stringify(&symbol_table));
+                    }
+                }
+            },
+            ReplCommand::Help => print_help(),
+            ReplCommand::Quit => break,
         };
-
-        for parsed_expr in parsed_exprs {
-            let evald_expr = parsed_expr.eval(&mut env_table, env_global);
-            match evald_expr {
-                Ok(expr) => print!("{} ", expr.stringify(&symbol_table)),
-                Err(err) => println!("{}", err.stringify(&symbol_table)),
-            }
-        }
-        println!();
     }
 
     Ok(())
 }
 
-fn print_header() {
-    println!("Welcome to {} v{} interactive REPL.\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
-}
-
-fn read_parse<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut SymbolTable) -> Result<Option<Vec<Expr>>> {
+fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut SymbolTable) -> Result<ReplCommand> {
     let mut line_buf = String::new();
     let mut exprs = Vec::new();
-    loop {
+    'readmore: loop {
         if line_buf.len() == 0 {
             reader_interface.set_prompt("> ")?;
         } else {
@@ -53,9 +79,19 @@ fn read_parse<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut S
                 line_buf.push_str(&string);
             },
             ReadResult::Signal(_) => 
-                break Ok(None),
+                break Ok(ReplCommand::Quit),
             ReadResult::Eof => 
-                break Ok(None),
+                break Ok(ReplCommand::Quit),
+        }
+
+        if line_buf.trim().starts_with(":") {
+            if let Some(command) = parse_repl_command(&line_buf.trim()[1..]) {
+                return Ok(command);
+            } else {
+                println!("Invalid command '{}'.", &line_buf.trim()[1..]);
+                line_buf.clear();
+                continue 'readmore;
+            }
         }
 
         let line_cloned = line_buf.clone();
@@ -67,12 +103,12 @@ fn read_parse<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut S
                     expr
                 },
                 Err(ParseError::UnexpectedEOF) => {
-                    continue;
+                    continue 'readmore;
                 }
                 Err(err) => {
                     println!("{err}");
                     line_buf.clear();
-                    continue;
+                    continue 'readmore;
                 },
             };
             exprs.push(parsed_expr);
@@ -82,6 +118,15 @@ fn read_parse<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut S
             reader_interface.add_history_unique(line_buf.clone());
         }
 
-        break Ok(Some(exprs))
+        break Ok(ReplCommand::Eval(exprs.into_boxed_slice()))
+    }
+}
+
+fn parse_repl_command(command_str: &str) -> Option<ReplCommand> {
+    match command_str {
+        "q" | "quit" => Some(ReplCommand::Quit),
+        "h" | "help" => Some(ReplCommand::Help),
+        "d" | "defined" => Some(ReplCommand::PrintDefined),
+        _ => None,
     }
 }

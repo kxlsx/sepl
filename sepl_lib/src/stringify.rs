@@ -53,13 +53,13 @@ impl Stringify<Symbol, SymbolTable> for EvalError {
     fn stringify(&self, symbol_table: &SymbolTable) -> String {
         match self {
             ref err @ EvalError::IncorrectArgCount { ref expr, .. } => {
-                format!("'{}': {}", expr.stringify(symbol_table), err)
+                format!("<{}>: {}", expr.stringify(symbol_table), err)
             }
             err @ EvalError::IncorrectArgType { builtin, .. } => {
-                format!("'{}': {}", builtin, err)
+                format!("<{}>: {}", builtin, err)
             }
             ref err @ EvalError::NotCallable { ref expr, .. } => {
-                format!("'{}': {}", expr.stringify(symbol_table), err)
+                format!("<{}>: {}", expr.stringify(symbol_table), err)
             }
         }
     }
