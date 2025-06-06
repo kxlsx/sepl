@@ -1,13 +1,10 @@
-use std::error::Error as ErrorTrait;
-use std::iter::Peekable;
-
 use logos::Logos;
 use thiserror::Error;
 
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
-use crate::lex::{Error as LexError, Token};
+use crate::lex::{Error as LexError, Token, Lexer};
 
-#[derive(Error, Debug, PartialEq, Eq, Hash)]
+#[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     #[error("Expected a symbol, found: '{found}'.")]
     ExpectedSymbol { found: String },
@@ -15,42 +12,28 @@ pub enum Error {
     ExpectedLit { found: String },
     #[error("Expressions cannot be empty.")]
     ExpectedExpr,
-    #[error("Expected '(', '[', or '}}', found: '{found}'")]
+    #[error("Expected '(', '[', or '}}', found: '{found}'.")]
     ExpectedLeftBracket { found: String },
-    #[error("Expected a matching '{expected}', found '{found}'")]
+    #[error("Expected a matching '{expected}', found '{found}'.")]
     ExpectedRightBracket { expected: String, found: String },
-    #[error("Unexpected EOF")]
+    #[error("Unexpected EOF.")]
     UnexpectedEOF,
-    #[error("Unexpected Token")]
-    UnexpectedToken,
+    #[error("Unexpected token: '{token}'.")]
+    UnexpectedToken{token: String},
 }
 
-impl From<LexError> for Error {
-    fn from(value: LexError) -> Self {
-        match value {
-            LexError::UnexpectedToken => Error::UnexpectedToken,
-        }
-    }
-}
-
-pub struct Parser<'s, 'i, E, L>
-where
-    E: ErrorTrait + Into<Error> + Copy + Clone,
-    L: Iterator<Item = Result<Token<'i>, E>>,
-{
-    lexer: Peekable<L>,
+pub struct Parser<'s, 'i> {
+    lexer: Lexer<'i, Token<'i>>,
+    lookahead_token: Option<Option<Result<Token<'i>, LexError>>>,
     symbol_table: &'s mut SymbolTable,
 }
 
-impl<'s, 'i, E, L> Parser<'s, 'i, E, L>
-where
-    E: ErrorTrait + Into<Error> + Copy + Clone,
-    L: Iterator<Item = Result<Token<'i>, E>>,
-{
-    pub fn new(lexer: L, symbol_table: &'s mut SymbolTable) -> Self {
+impl<'s, 'i> Parser<'s, 'i> {
+    pub fn new(lexer: Lexer<'i, Token<'i>>, symbol_table: &'s mut SymbolTable) -> Self {
         Parser {
-            lexer: lexer.peekable(),
+            lexer: lexer,
             symbol_table,
+            lookahead_token: None
         }
     }
 
@@ -66,25 +49,50 @@ where
         Lit::parse(self)
     }
 
-    pub fn lookahead(&mut self) -> Option<Result<Token<'i>, E>> {
-        self.lexer.peek().copied()
+    pub fn lookahead(&mut self) -> Option<Result<Token<'i>, Error>> {
+        self.lookahead_token()
     }
 
-    pub fn eat(&mut self) -> Option<Result<Token<'i>, E>> {
-        self.lexer.next()
+    pub fn eat(&mut self) -> Option<Result<Token<'i>, Error>> {
+        if let Some(lookahead) = self.lookahead_token.take() {
+            self.parse_result_from_lex_result(lookahead)
+        } else {
+            self.next_token()
+        }
     }
 
-    pub fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, E>> {
-        self.lexer
-            .next_if(|lex_res| lex_res.is_ok_and(|token| token == expected))
+    pub fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, Error>> {
+        let lookahead = self.lookahead();
+
+        match lookahead {
+            Some(Ok(token)) if token == expected => self.eat(),
+            _ => None,
+        }
+    }
+
+    fn next_token(&mut self) -> Option<Result<Token<'i>, Error>> {
+        let next = self.lexer.next();
+        self.parse_result_from_lex_result(next)
+    }
+
+    fn lookahead_token(&mut self) -> Option<Result<Token<'i>, Error>> {
+        if self.lookahead_token.is_none() {
+            self.lookahead_token = Some(self.lexer.next());    
+        }
+
+        self.parse_result_from_lex_result(self.lookahead_token.unwrap())
+    }
+
+    fn parse_result_from_lex_result(&self, lex_result: Option<Result<Token<'i>, LexError>>) -> Option<Result<Token<'i>, Error>> {
+        match lex_result {
+            None => None,
+            Some(Ok(token)) => Some(Ok(token)),
+            Some(Err(LexError::UnexpectedToken)) => Some(Err(Error::UnexpectedToken { token: String::from(self.lexer.slice()) }))
+        }
     }
 }
 
-impl<'s, 'i, E, L> Iterator for Parser<'s, 'i, E, L>
-where
-    E: ErrorTrait + Into<Error> + Copy + Clone,
-    L: Iterator<Item = Result<Token<'i>, E>>,
-{
+impl<'s, 'i> Iterator for Parser<'s, 'i> {
     type Item = Result<Expr, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -125,48 +133,37 @@ pub trait Parse
 where
     Self: Sized,
 {
-    fn parse<'s, 'i, E, L>(parser: &mut Parser<'s, 'i, E, L>) -> Result<Self, Error>
-    where
-        E: ErrorTrait + Into<Error> + Copy + Clone,
-        L: Iterator<Item = Result<Token<'i>, E>>;
+    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error>;
 }
 
 impl Parse for Symbol {
-    fn parse<'s, 'i, E, L>(parser: &mut Parser<'s, 'i, E, L>) -> Result<Self, Error>
-    where
-        E: ErrorTrait + Into<Error> + Copy + Clone,
-        L: Iterator<Item = Result<Token<'i>, E>>,
-    {
+    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
         match parser.lookahead() {
             Some(Ok(Token::Symbol(name))) => {
                 parser.eat();
                 Ok(parser.symbol_table.intern(name))
             }
-            Some(Err(lex_error)) => Err(lex_error.into()),
-            None => Err(Error::UnexpectedEOF),
             Some(Ok(other_token)) => Err(Error::ExpectedSymbol {
                 found: other_token.to_string(),
             }),
+            Some(Err(lex_error)) => Err(lex_error),
+            None => Err(Error::UnexpectedEOF),
         }
     }
 }
 
 impl Parse for Lit {
-    fn parse<'s, 'i, E, L>(parser: &mut Parser<'s, 'i, E, L>) -> Result<Self, Error>
-    where
-        E: ErrorTrait + Into<Error> + Copy + Clone,
-        L: Iterator<Item = Result<Token<'i>, E>>,
-    {
+    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
         let lit = match parser.lookahead() {
             Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
             Some(Ok(Token::True)) => Ok(Lit::Bool(true)),
             Some(Ok(Token::False)) => Ok(Lit::Bool(false)),
             Some(Ok(Token::Nil)) => Ok(Lit::Nil),
-            Some(Err(lex_error)) => Err(lex_error.into()),
-            None => Err(Error::UnexpectedEOF),
             Some(Ok(other_token)) => Err(Error::ExpectedLit {
                 found: other_token.to_string(),
             }),
+            Some(Err(lex_error)) => Err(lex_error),
+            None => Err(Error::UnexpectedEOF),
         }?;
 
         parser.eat();
@@ -175,11 +172,7 @@ impl Parse for Lit {
 }
 
 impl Parse for Expr {
-    fn parse<'s, 'i, E, L>(parser: &mut Parser<'s, 'i, E, L>) -> Result<Self, Error>
-    where
-        E: ErrorTrait + Into<Error> + Copy + Clone,
-        L: Iterator<Item = Result<Token<'i>, E>>,
-    {
+    fn parse<'s, 'i>(parser: &mut Parser<'s, 'i>) -> Result<Self, Error> {
         if let Ok(symbol) = Symbol::parse(parser) {
             return Ok(Expr::Symbol(symbol));
         }
@@ -190,13 +183,13 @@ impl Parse for Expr {
 
         let matching_bracket = match parser.lookahead() {
             Some(Ok(Token::LeftBracket(bracket_type))) => Token::RightBracket(bracket_type),
-            Some(Err(lex_error)) => return Err(lex_error.into()),
-            None => return Err(Error::UnexpectedEOF),
             Some(Ok(other_token)) => {
                 return Err(Error::ExpectedLeftBracket {
                     found: other_token.to_string(),
                 })
             }
+            Some(Err(lex_error)) => return Err(lex_error.into()),
+            None => return Err(Error::UnexpectedEOF),
         };
 
         parser.eat();

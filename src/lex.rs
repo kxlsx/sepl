@@ -2,14 +2,13 @@ use std::fmt::Display;
 
 use thiserror::Error;
 
-use logos::Lexer;
-
 pub use logos::Logos as Lex;
+pub use logos::Lexer as Lexer;
 
 #[derive(Copy, Clone, Error, Debug, PartialEq, Default)]
 pub enum Error {
     #[default]
-    #[error("TODO: unexpected token")]
+    #[error("Unexpected token.")]
     UnexpectedToken,
 }
 
