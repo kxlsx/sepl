@@ -14,15 +14,15 @@ impl Env {
 }
 
 #[derive(Debug)]
-pub struct EvalTable {
+pub struct EnvTable {
     env_allocator: EnvAllocator,
     env_tree: HashMap<Env, EnvTreeNode>,
     symbol_definitions: HashMap<Env, HashMap<Symbol, Expr>>,
 }
 
-impl EvalTable {
+impl EnvTable {
     pub fn new() -> Self {
-        EvalTable {
+        EnvTable {
             env_allocator: EnvAllocator::new(),
             env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
             symbol_definitions: HashMap::new(),
@@ -30,14 +30,14 @@ impl EvalTable {
     }
 
     pub fn with_builtins(symbol_table: &mut SymbolTable) -> Self {
-        let mut eval_table = Self::new();
+        let mut env_table = Self::new();
 
         for builtin in Builtin::iter() {
             let symbol = symbol_table.intern(builtin.as_ref());
-            eval_table.symbol_define_global(symbol, Expr::Builtin(builtin));
+            env_table.symbol_define_global(symbol, Expr::Builtin(builtin));
         }
 
-        eval_table
+        env_table
     }
 
     pub fn symbol_define_global(&mut self, symbol: Symbol, expr: Expr) -> Option<Expr> {
@@ -168,7 +168,7 @@ impl EvalTable {
     }
 }
 
-impl Default for EvalTable {
+impl Default for EnvTable {
     fn default() -> Self {
         Self::new()
     }
@@ -228,5 +228,5 @@ impl EnvTreeNode {
 
 #[cfg(test)]
 mod tests {
-    //TODO: evaltable tests
+    //TODO: EnvTable tests
 }

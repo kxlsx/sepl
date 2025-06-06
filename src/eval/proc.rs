@@ -1,4 +1,4 @@
-use super::{Env, Error, EvalTable, Expr, Symbol};
+use super::{Env, Error, EnvTable, Expr, Symbol};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Procedure {
@@ -12,18 +12,18 @@ impl Procedure {
         params: Vec<Symbol>,
         body: Box<Expr>,
         parent_env: Env,
-        eval_table: &mut EvalTable,
+        env_table: &mut EnvTable,
     ) -> Self {
         Self {
             params,
             body,
-            capture_env: eval_table.env_create(parent_env),
+            capture_env: env_table.env_create(parent_env),
         }
     }
 
     pub fn eval(
         self,
-        eval_table: &mut EvalTable,
+        env_table: &mut EnvTable,
         parent_env: Env,
         args: Vec<Expr>,
     ) -> Result<Expr, Error> {
@@ -35,16 +35,16 @@ impl Procedure {
             });
         }
 
-        let env = eval_table.env_create(self.capture_env);
+        let env = env_table.env_create(self.capture_env);
 
         for (param, arg) in self.params.iter().zip(args) {
-            let arg_eval = arg.eval(eval_table, parent_env)?;
-            eval_table.symbol_define(*param, env, arg_eval);
+            let arg_eval = arg.eval(env_table, parent_env)?;
+            env_table.symbol_define(*param, env, arg_eval);
         }
 
-        let res = self.body.eval(eval_table, env);
+        let res = self.body.eval(env_table, env);
 
-        eval_table.env_try_destroy(env);
+        env_table.env_try_destroy(env);
 
         res
     }

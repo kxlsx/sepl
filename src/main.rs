@@ -1,4 +1,4 @@
-use sepl::eval::{EvalTable, SymbolTable};
+use sepl::eval::{EnvTable, SymbolTable};
 use sepl::lex::{Lex, Token};
 use sepl::parse::Parser;
 use sepl::stringify::Stringify;
@@ -56,10 +56,10 @@ fn main() {
         parsed_exprs.push(expr.unwrap());
     }
 
-    let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
-    let env_global = eval_table.env_global();
+    let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+    let env_global = env_table.env_global();
     for expr in parsed_exprs {
-        let evaluated_expr = expr.eval(&mut eval_table, env_global);
+        let evaluated_expr = expr.eval(&mut env_table, env_global);
         match evaluated_expr {
             Ok(expr) => println!("{}", expr.stringify(&symbol_table)),
             Err(err) => println!("{}", err.stringify(&symbol_table)),

@@ -1,6 +1,6 @@
 use std::hash::Hash;
 
-use super::{Builtin, Env, Error, EvalTable, Lit, Procedure, Symbol};
+use super::{Builtin, Env, Error, EnvTable, Lit, Procedure, Symbol};
 
 macro_rules! expr_type_str {
     (Symbol) => {
@@ -37,18 +37,18 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn eval(self, eval_table: &mut EvalTable, env: Env) -> Result<Self, Error> {
+    pub fn eval(self, env_table: &mut EnvTable, env: Env) -> Result<Self, Error> {
         match self {
             Expr::Lit(lit) => Ok(Expr::Lit(lit)),
             Expr::Builtin(builtin) => Ok(Expr::Builtin(builtin)),
             Expr::Procedure(proc) => Ok(Expr::Procedure(proc)),
-            Expr::Symbol(symbol) => match eval_table.symbol_definition(symbol, env) {
-                Some(expr) => expr.clone().eval(eval_table, env),
+            Expr::Symbol(symbol) => match env_table.symbol_definition(symbol, env) {
+                Some(expr) => expr.clone().eval(env_table, env),
                 None => Ok(Expr::Symbol(symbol)),
             },
-            Expr::Call(head, tail) => match head.eval(eval_table, env)? {
-                Expr::Procedure(proc) => proc.eval(eval_table, env, tail),
-                Expr::Builtin(builtin) => builtin.eval(eval_table, env, tail),
+            Expr::Call(head, tail) => match head.eval(env_table, env)? {
+                Expr::Procedure(proc) => proc.eval(env_table, env, tail),
+                Expr::Builtin(builtin) => builtin.eval(env_table, env, tail),
                 uncallable_expr => Err(Error::NotCallable {
                     expr: uncallable_expr,
                 }),
@@ -77,14 +77,14 @@ mod tests {
     use super::*;
 
     macro_rules! assert_evals_from_str {
-        (with $symbol_table:ident, $eval_table:ident: $($string:literal => $expected:pat),+, ) => {
+        (with $symbol_table:ident, $env_table:ident: $($string:literal => $expected:pat),+, ) => {
             $({
             let tmp = Expr::parse_from(
                 $string,
                 &mut $symbol_table
             ).expect("Parse error!");
             
-            let tmp_eval = tmp.eval(&mut $eval_table, Env::global());
+            let tmp_eval = tmp.eval(&mut $env_table, Env::global());
             if let $expected = tmp_eval {} else {panic!("Did not expect {:?}", tmp_eval)}
             })+
         };
@@ -93,10 +93,10 @@ mod tests {
     #[test]
     fn eval_define() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define pi 3.1415)" => Ok(Expr::Lit(Lit::Nil)),
             "pi" => Ok(Expr::Lit(Lit::Float(3.1415))),
         );
@@ -107,10 +107,10 @@ mod tests {
     #[test]
     fn eval_define_recursive() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define x x)" => Ok(Expr::Lit(Lit::Nil)),
             "x" => Ok(Expr::Symbol(_)),
             "(define x y)" => Ok(Expr::Lit(Lit::Nil)),
@@ -127,10 +127,10 @@ mod tests {
     #[test]
     fn eval_define_scope() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define x 2.0)" => Ok(Expr::Lit(Lit::Nil)),
             "(define y 4096.0)" => Ok(Expr::Lit(Lit::Nil)),
             "((lambda x (do (define y 1.) (+ x y))) 0.5)" 
@@ -157,10 +157,10 @@ mod tests {
     #[test]
     fn eval_factorial() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define = (lambda a b (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
@@ -175,10 +175,10 @@ mod tests {
     #[test]
     fn eval_fib() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define = (lambda a b (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define fib (lambda a b n (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
@@ -197,10 +197,10 @@ mod tests {
     #[test]
     fn eval_curried() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define f (lambda a (lambda b (lambda c (+ a (+ b c))))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(((f 2.) 2.) 2.)"
@@ -213,10 +213,10 @@ mod tests {
     #[test]
     fn eval_cons_as_lambda() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "(define cons (lambda x y (lambda m (m x y))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define car (lambda z (z (lambda p q p))))"
@@ -237,10 +237,10 @@ mod tests {
     #[test]
     fn eval_lits() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "42."   => Ok(Expr::Lit(Lit::Float(42.))),
             "true"  => Ok(Expr::Lit(Lit::Bool(true))),
             "false" => Ok(Expr::Lit(Lit::Bool(false))),
@@ -253,10 +253,10 @@ mod tests {
     #[test]
     fn eval_not_callable() -> Result<(), Error> {
         let mut symbol_table = SymbolTable::new();
-        let mut eval_table = EvalTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 
         assert_evals_from_str!(
-            with symbol_table, eval_table:
+            with symbol_table, env_table:
             "((+ 2. 3.) e)"  => Err(Error::NotCallable { .. }),
         );
 
