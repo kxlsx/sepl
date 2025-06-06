@@ -1,7 +1,7 @@
-use sepl::eval::{EnvTable, SymbolTable};
-use sepl::lex::{Lex, Token};
-use sepl::parse::Parser;
-use sepl::stringify::Stringify;
+use sepl_lib::eval::{EnvTable, SymbolTable};
+use sepl_lib::lex::{Lex, Token};
+use sepl_lib::parse::Parser;
+use sepl_lib::stringify::Stringify;
 
 const COD: &str = "
     (define pi (- 4.1415 1.0))

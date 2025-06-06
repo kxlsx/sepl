@@ -1,10 +1,2 @@
-[package]
-name = "sepl"
-version = "0.0.1"
-edition = "2021"
-
-[dependencies]
-thiserror = "2.0"
-logos = "0.15"
-strum = "0.27"
-strum_macros = "0.27"
+[workspace]
+members = ["sepl_lib", "sepl_bin"]

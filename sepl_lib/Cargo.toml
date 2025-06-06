@@ -1,0 +1,16 @@
+[package]
+name = "sepl-lib"
+version = "0.0.1"
+edition = "2021"
+authors = ["Łukasz Dragon <lukasz.b.dragon@gmail.com>"]
+license = "GPL-3.0-only"
+readme = "README.md"
+repository = "https://github.com/kxlsx/sepl/"
+description = "Interpreter library for a lisp dialect"
+
+
+[dependencies]
+thiserror = "2.0"
+logos = "0.15"
+strum = "0.27"
+strum_macros = "0.27"
