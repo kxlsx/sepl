@@ -4,6 +4,7 @@ use thiserror::Error;
 use crate::eval::{Expr, Lit, Symbol, SymbolTable};
 use crate::lex::{Error as LexError, Lexer, Token};
 
+/// Error type returned by the [`Parser`].
 #[derive(Error, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     #[error("Expected a symbol, found: '{found}'.")]
@@ -22,6 +23,11 @@ pub enum Error {
     UnexpectedToken { token: String },
 }
 
+/// Struct representing a parser for
+/// the `sepl` lanugage. Used to
+/// parse [`Expr`]s from a [`Lexer`],
+/// inserting encountered symbols
+/// into a [`SymbolTable`].
 pub struct Parser<'s, 'i> {
     lexer: Lexer<'i, Token<'i>>,
     lookahead_token: Option<Option<Result<Token<'i>, LexError>>>,
@@ -29,6 +35,7 @@ pub struct Parser<'s, 'i> {
 }
 
 impl<'s, 'i> Parser<'s, 'i> {
+    /// Create a new [`Parser`].
     pub fn new(lexer: Lexer<'i, Token<'i>>, symbol_table: &'s mut SymbolTable) -> Self {
         Parser {
             lexer,
@@ -37,6 +44,7 @@ impl<'s, 'i> Parser<'s, 'i> {
         }
     }
 
+    /// Try to parse an [`Expr`].
     pub fn parse_expr(&mut self) -> Result<Expr, Error> {
         if let Ok(symbol) = self.parse_symbol() {
             return Ok(Expr::Symbol(symbol));
@@ -85,6 +93,7 @@ impl<'s, 'i> Parser<'s, 'i> {
         Ok(Expr::Call(head, body))
     }
 
+    /// Try to parse a [`Symbol`].
     pub fn parse_symbol(&mut self) -> Result<Symbol, Error> {
         match self.lookahead() {
             Some(Ok(Token::Symbol(name))) => {
@@ -99,6 +108,7 @@ impl<'s, 'i> Parser<'s, 'i> {
         }
     }
 
+    /// Try to parse an [`Lit`].
     pub fn parse_lit(&mut self) -> Result<Lit, Error> {
         let lit = match self.lookahead() {
             Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
@@ -116,10 +126,12 @@ impl<'s, 'i> Parser<'s, 'i> {
         Ok(lit)
     }
 
+    /// Return the next [`Token`] without consuming it.
     pub fn lookahead(&mut self) -> Option<Result<Token<'i>, Error>> {
         self.lookahead_token()
     }
 
+    /// Return the next [`Token`] and consume it.
     pub fn eat(&mut self) -> Option<Result<Token<'i>, Error>> {
         if let Some(lookahead) = self.lookahead_token.take() {
             self.parse_result_from_lex_result(lookahead)
@@ -127,7 +139,9 @@ impl<'s, 'i> Parser<'s, 'i> {
             self.next_token()
         }
     }
-
+    
+    /// Return the next [`Token`] and consume it, only if the token matches
+    /// `expected`.
     pub fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, Error>> {
         let lookahead = self.lookahead();
 
@@ -137,11 +151,13 @@ impl<'s, 'i> Parser<'s, 'i> {
         }
     }
 
+    /// Return the next [`Token`]
     fn next_token(&mut self) -> Option<Result<Token<'i>, Error>> {
         let next = self.lexer.next();
         self.parse_result_from_lex_result(next)
     }
 
+    /// Peek the next [`Token`].
     fn lookahead_token(&mut self) -> Option<Result<Token<'i>, Error>> {
         if self.lookahead_token.is_none() {
             self.lookahead_token = Some(self.lexer.next());
@@ -150,6 +166,7 @@ impl<'s, 'i> Parser<'s, 'i> {
         self.parse_result_from_lex_result(self.lookahead_token.unwrap())
     }
 
+    /// Convert [`lex::Error`](LexError) to [`parse::Error`](Error).
     fn parse_result_from_lex_result(
         &self,
         lex_result: Option<Result<Token<'i>, LexError>>,
@@ -176,6 +193,8 @@ impl<'s, 'i> Iterator for Parser<'s, 'i> {
     }
 }
 
+/// Trait representing a type
+/// that can be created using a [`Parser`].
 pub trait Parse
 where
     Self: Sized,
@@ -201,6 +220,8 @@ impl Parse for Expr {
     }
 }
 
+/// Trait representing a type
+/// that can be created from `T`.
 pub trait ParseFrom<T>
 where
     Self: Sized,

@@ -1,5 +1,7 @@
 use std::{fmt::Display, hash::Hash};
 
+/// Type representing any
+/// value literal other than [`Symbol`](super::Symbol).
 #[derive(Debug, Clone, Copy)]
 pub enum Lit {
     Float(f64),

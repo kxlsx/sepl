@@ -5,6 +5,7 @@ use thiserror::Error;
 pub use logos::Lexer;
 pub use logos::Logos as Lex;
 
+/// Error type returned by the [`Lexer`].
 #[derive(Copy, Clone, Error, Debug, PartialEq, Default)]
 pub enum Error {
     #[default]
@@ -12,6 +13,9 @@ pub enum Error {
     UnexpectedToken,
 }
 
+/// Every token represented by the [`Lexer`]
+/// 
+/// A [`Lexer`] can be created using [`Token::lexer`].
 #[derive(Lex, Debug, Clone, Copy, PartialEq)]
 #[logos(skip r"[ \t\n\f]+")]
 #[logos(error = Error)]
@@ -20,22 +24,31 @@ pub enum Error {
 #[logos(subpattern special = r"[[:punct:]&&[^(){}\[\]]]")]
 #[logos(subpattern symbol_start = r"((?&letter)|([?&special--\-]))")]
 pub enum Token<'i> {
+    /// Left brace.
     #[regex(r"[\(\[\{]", parse_bracket_token)]
     LeftBracket(BracketType),
+    /// Right brace.
     #[regex(r"[\)\]\}]", parse_bracket_token)]
     RightBracket(BracketType),
+    /// A floating point number, i.e. a number
+    /// that at least ends with a dot.
     #[regex(
         r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+", // FIXME: make 32e 5.e etc invalid
         parse_float_token,
         priority = 5
     )]
     Float(f64),
+    /// `true`
     #[token("true")]
     True,
+    /// `false`
     #[token("false")]
     False,
+    /// `nil`
     #[token("nil")]
     Nil,
+    /// A string of letters or punctuation or digits that's
+    /// not a number.
     #[regex(r"((?&letter)|(?&special))+|(?&symbol_start)((?&letter)|(?&special)|(?&digit))+")]
     Symbol(&'i str),
 }
@@ -58,6 +71,7 @@ impl<'i> Display for Token<'i> {
     }
 }
 
+/// Every recognized type of bracket.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BracketType {
     Normal,

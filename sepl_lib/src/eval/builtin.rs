@@ -2,33 +2,65 @@ use strum_macros::{AsRefStr, Display, EnumIter};
 
 use super::{expr_type_str, Env, EnvTable, Error, Expr, Lit, Procedure, Symbol};
 
+/// Type representing a bulitin procedure.
+/// These are automatically assigned to their
+/// symbol representations when creating
+/// [`EnvTable::with_builtins`].
 #[derive(EnumIter, AsRefStr, Display, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Builtin {
+    /// Creates an anonymous procedure.
     #[strum(serialize = "lambda")]
     Lambda,
+    /// Defines a symbol as an expression.
     #[strum(serialize = "define")]
     Define,
+    /// Returns the argument without evaluating.
     #[strum(serialize = "quote")]
     Quote,
+    /// Evaluates the argument and returns it.
     #[strum(serialize = "eval")]
     Eval,
+    /// Evaluates all arguments and returns the
+    /// last one.
     #[strum(serialize = "do")]
     Do,
+    /// Evaluates and returns the second 
+    /// argument if the first is `true` (or not `nil`),
+    /// otherwise evaluates and returns the third.
     #[strum(serialize = "if")]
     IfElse,
+    /// Returns true if the first argument
+    /// is less-than-or-equal to the second
+    /// (both must be `float`s)
     #[strum(serialize = "<=")]
     Leq,
+    /// Adds two `float`s
     #[strum(serialize = "+")]
     Add,
+    /// Subtracts two `float`s
     #[strum(serialize = "-")]
     Sub,
+    /// Multiplies two `float`s
     #[strum(serialize = "*")]
     Mul,
+    /// Divides two `float`s
     #[strum(serialize = "/")]
     Div,
 }
 
 impl Builtin {
+    /// Evaluate the [`Builtin`] with the passed `args`. 
+    /// This method can be called as a result of of evaluating the
+    /// [`Call`](Expr::Call) expression.
+    /// 
+    /// # Errors
+    /// Every builtin procedure accepts a specific
+    /// number and type of arguments. Some builtins
+    /// (like [`Lambda`](Builtin::Lambda) and [`Do`](Builtin::Do))
+    /// accept any non-zero number of arguments.
+    /// 
+    /// [`eval`](Builtin::eval) can with [`Error::IncorrectArgCount`]
+    /// and [`Error::IncorrectArgType`].
     pub fn eval(&self, env_table: &mut EnvTable, env: Env, args: Vec<Expr>) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(env_table, env, args),
@@ -45,6 +77,11 @@ impl Builtin {
         }
     }
 
+    /// Creates an anonymous procedure.
+    /// 
+    /// Accepts any non-zero number of arguments,
+    /// all have to be `symbols`, except the last one
+    /// which can be any expression.
     fn builtin_lambda(
         &self,
         env_table: &mut EnvTable,
@@ -77,6 +114,12 @@ impl Builtin {
         )))
     }
 
+    /// Define a symbol as an expression.
+    /// Returns `nil`.
+    /// 
+    /// Accepts 2 arguments; the first one
+    /// is a `symbol`, the second one any
+    /// expression.
     fn builtin_define(
         &self,
         env_table: &mut EnvTable,
@@ -118,6 +161,9 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Nil))
     }
 
+    /// Return the argument without evaluating.
+    /// 
+    /// Accepts 1 argument.
     fn builtin_quote(
         &self,
         _env_table: &mut EnvTable,
@@ -135,6 +181,9 @@ impl Builtin {
         Ok(args.into_iter().next().unwrap())
     }
 
+    /// Evaluate the argument and return it.
+    /// 
+    /// Accepts 1 argument.
     fn builtin_eval(
         &self,
         env_table: &mut EnvTable,
@@ -156,6 +205,9 @@ impl Builtin {
             .eval(env_table, env)
     }
 
+    /// Evaluate every argument and return the last one.
+    /// 
+    /// Accepts any non-zero number of arguments.
     fn builtin_do(
         &self,
         env_table: &mut EnvTable,
@@ -179,6 +231,11 @@ impl Builtin {
         arg_last.eval(env_table, env)
     }
 
+    /// Evaluates and returns the second 
+    /// argument if the first is `true` (or not `nil`),
+    /// otherwise evaluates and returns the third.
+    /// 
+    /// Accepts 3 arguments.
     fn builtin_ifelse(
         &self,
         env_table: &mut EnvTable,
@@ -216,6 +273,12 @@ impl Builtin {
         })
     }
 
+
+    /// Returns true if the first argument
+    /// is less-than-or-equal to the second
+    /// (both must be `float`s).
+    /// 
+    /// Accepts 2 `float` arguments.
     fn builtin_leq(
         &self,
         env_table: &mut EnvTable,
@@ -260,6 +323,8 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Bool(a <= b)))
     }
 
+    /// Return the result of adding
+    /// two `float`s
     fn builtin_add(
         &self,
         env_table: &mut EnvTable,
@@ -304,6 +369,8 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a + b)))
     }
 
+    /// Return the result of subtracting
+    /// two `float`s
     fn builtin_sub(
         &self,
         env_table: &mut EnvTable,
@@ -348,6 +415,8 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a - b)))
     }
 
+    /// Return the result of multiplying
+    /// two `float`s
     fn builtin_mul(
         &self,
         env_table: &mut EnvTable,
@@ -392,6 +461,8 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Float(a * b)))
     }
 
+    /// Return the result of dividing
+    /// two `float`s
     fn builtin_div(
         &self,
         env_table: &mut EnvTable,

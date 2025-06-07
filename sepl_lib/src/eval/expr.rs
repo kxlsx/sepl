@@ -2,6 +2,12 @@ use std::hash::Hash;
 
 use super::{Builtin, Env, EnvTable, Error, Lit, Procedure, Symbol};
 
+/// Macro used to return
+/// a static string representing
+/// an expression's type.
+/// 
+/// Accepts the macro variant name
+/// as input (without the path).
 macro_rules! expr_type_str {
     (Symbol) => {
         "symbol"
@@ -27,6 +33,48 @@ macro_rules! expr_type_str {
 }
 pub(super) use expr_type_str;
 
+/// Type representing an expression in the
+/// `sepl` language.
+/// 
+/// This is **the** basic building block of 
+/// the language, serving both as AST[^ast] and IR[^ir].
+/// The enum variants can also be thought of
+/// as types.
+/// 
+/// [`Expr`] can be constructed
+/// using a [`Parser`](crate::parse::Parser) and
+/// evaluated (i.e. recursively reduced) using the 
+/// [`eval`](Expr::eval) and [`eval_global`](Expr::eval_global) 
+/// functions. 
+/// 
+/// Expressions are always evaluated in a specified 
+/// environment (scope), which they can possibly modify.
+/// The passed environment and the global state are 
+/// represented by the [`Env`] and [`EnvTable`] structs.
+/// 
+/// # Example
+/// ```
+/// use sepl_lib::{
+///     eval::{Expr, EnvTable, SymbolTable, Lit},
+///     parse::ParseFrom,
+/// };
+/// 
+/// let mut symbol_table = SymbolTable::new();
+/// let expr = Expr::parse_from(
+///     "((lambda x (* x x)) 16.0)",
+///     &mut symbol_table
+///     ).unwrap();
+/// 
+/// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+/// 
+/// assert!(matches!(
+///     expr.eval_global(&mut env_table),
+///     Ok(Expr::Lit(Lit::Float(256.)))
+/// ))
+/// ```
+/// 
+/// [^ast]: [Abstract Syntax Tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
+/// [^ir]: [Intermediate Representation](https://en.wikipedia.org/wiki/Intermediate_representation)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Expr {
     Symbol(Symbol),
@@ -37,6 +85,55 @@ pub enum Expr {
 }
 
 impl Expr {
+    /// [`eval`](Expr::eval), but called with [`EnvTable::env_global`](crate::eval::EnvTable::env_global).
+    pub fn eval_global(self, env_table: &mut EnvTable) -> Result<Self, Error> {
+        self.eval(env_table, env_table.env_global())
+    }
+    
+    /// Evaluate the [`Expr`] using the passed
+    /// environment state ([`EnvTable`]) in the passed
+    /// environment ([`Env`]). If you don't need
+    /// to specify the environment, use [`eval_global`](Expr::eval_global).
+    /// 
+    /// Evaluation rules are described in here: [`sepl_lib`](crate).
+    /// 
+    /// # Errors
+    /// Evaluation fails with [`Error::NotCallable`] when trying to evaluate a [`Call`](Expr::Call)
+    /// with a not callable expression (i.e. not a [`Builtin`] or [`Procedure`]). 
+    /// [`Error::IncorrectArgCount`] and [`Error::IncorrectArgType`] 
+    /// are returned when evaluating a [`Procedure`] or a [`Builtin`]
+    /// with incorrect arguments.
+    /// 
+    /// # Examples
+    /// ```
+    /// use sepl_lib::{
+    ///     eval::{Expr, EnvTable, SymbolTable, Lit, Error},
+    ///     parse::ParseFrom,
+    /// };
+    /// 
+    /// let mut symbol_table = SymbolTable::new();
+    /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+    /// 
+    /// let expr = Expr::parse_from(
+    ///     "(+ 2. (* 3. 4.))",
+    ///     &mut symbol_table
+    /// ).unwrap();
+    /// 
+    /// assert!(matches!(
+    ///     expr.eval_global(&mut env_table),
+    ///     Ok(Expr::Lit(Lit::Float(14.)))
+    /// ));
+    /// 
+    /// let expr = Expr::parse_from(
+    ///     "(2. (+ 2. 3.))",
+    ///     &mut symbol_table
+    /// ).unwrap();
+    /// 
+    /// assert!(matches!(
+    ///     expr.eval_global(&mut env_table),
+    ///     Err(Error::NotCallable{..})
+    /// ));
+    /// ```
     pub fn eval(self, env_table: &mut EnvTable, env: Env) -> Result<Self, Error> {
         match self {
             Expr::Lit(lit) => Ok(Expr::Lit(lit)),
@@ -56,6 +153,18 @@ impl Expr {
         }
     }
 
+    /// Return a [&'static str](str) represeting
+    /// the expressions type.
+    /// 
+    /// # Example
+    /// ```
+    /// use sepl_lib::eval::{Expr, Lit};
+    /// 
+    /// assert_eq!(
+    ///     Expr::Lit(Lit::Float(10.)).as_type_str(),
+    ///     "float"
+    /// );
+    /// ```
     pub const fn as_type_str(&self) -> &'static str {
         match self {
             Expr::Lit(Lit::Bool(_)) => expr_type_str!(Lit::Bool),

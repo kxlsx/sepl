@@ -1,11 +1,17 @@
 use crate::eval::{Error as EvalError, Expr, Procedure, Symbol, SymbolTable};
 
+/// Trait representing a type
+/// that can resolve other types (`S`)
+/// into [`&str`](str).
 pub trait Resolver<S> {
     fn resolve(&self, symbol: S) -> &str;
 }
 
+/// Trait representing a type that can
+/// be turned into a [`String`] using
+/// a [`Resolver`].
 pub trait Stringify<S, R: Resolver<S>> {
-    fn stringify(&self, resolver: &SymbolTable) -> String;
+    fn stringify(&self, resolver: &R) -> String;
 }
 
 impl Resolver<Symbol> for SymbolTable {

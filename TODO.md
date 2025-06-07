@@ -1,0 +1,12 @@
+## TODO:
+- cli
+- better repl errors
+- clean up + add more builtins
+- add ints
+- tests
+- figure out lib interface
+- stack overflow handling, iterative evaluation (manual stack)
+- faster hashmaps (dont need to be DOS secure)
+- a bit more docs
+- readme
+- serde?

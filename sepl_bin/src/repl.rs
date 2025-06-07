@@ -18,6 +18,7 @@ enum ReplCommand {
 fn print_header() {
     // TODO: make this more fun
     println!("Welcome to {} v{} interactive REPL.\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    println!("type ':h' for help.")
 }
 
 fn print_help() {
@@ -30,7 +31,6 @@ fn print_help() {
 pub fn repl() -> Result<()> {
     let mut symbol_table = SymbolTable::new();
     let mut env_table = EnvTable::with_builtins(&mut symbol_table);
-    let env_global = env_table.env_global();
 
     let reader_interface = Interface::new("sepl")?;
 
@@ -39,7 +39,7 @@ pub fn repl() -> Result<()> {
         match read_repl_command(&reader_interface, &mut symbol_table)? {
             ReplCommand::Eval(parsed_exprs) => {
                 for parsed_expr in parsed_exprs {
-                    let evald_expr = parsed_expr.eval(&mut env_table, env_global);
+                    let evald_expr = parsed_expr.eval_global(&mut env_table);
                     match evald_expr {
                         Ok(expr) => print!("{} ", expr.stringify(&symbol_table)),
                         Err(err) => println!("{}", err.stringify(&symbol_table)),
@@ -67,7 +67,7 @@ fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table:
     let mut line_buf = String::new();
     let mut exprs = Vec::new();
     'readmore: loop {
-        if line_buf.len() == 0 {
+        if line_buf.is_empty() {
             reader_interface.set_prompt("> ")?;
         } else {
             line_buf.push(' ');
