@@ -10,3 +10,5 @@
 - a bit more docs
 - readme
 - serde?
+- more commands for the repl (undefine, restore)
+- true, false  & nil don't need to exist (they can be symbols)
