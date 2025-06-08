@@ -107,7 +107,6 @@ impl SymbolTable {
     /// let symbol1 = symbol_table.intern("foo");
     /// let symbol2 = symbol_table.intern("bar");
     /// 
-    /// 
     /// assert_eq!(symbol_table.resolve(symbol1), "foo");
     /// assert_eq!(symbol_table.resolve(symbol2), "bar");
     /// ```
@@ -116,7 +115,28 @@ impl SymbolTable {
 
         // This works, because SymbolTable stores Box<str>, which
         // are all unique heap allocations.
-        unsafe { str::from_utf8_unchecked(from_raw_parts(ptr, len)) }
+        unsafe { 
+            let resolved = str::from_utf8_unchecked(from_raw_parts(ptr, len));
+            debug_assert!(
+                self.string_stor.contains_key(resolved), 
+                "{:?} does not exist in this SymbolTable!",
+                symbol
+            );
+
+            resolved
+        }
+    }
+
+    /// Return the number of [`String`]s interned
+    /// in the [`SymbolTable`].
+    pub fn len(&self) -> usize {
+        self.string_stor.len()
+    }
+
+    /// Return whether the [`SymbolTable`]
+    /// is empty.
+    pub fn is_empty(&self) -> bool {
+        self.string_stor.len() == 0
     }
 }
 
@@ -128,5 +148,53 @@ impl Default for SymbolTable {
 
 #[cfg(test)]
 mod tests {
-    //TODO: symboltable tests
+    use super::*;
+
+    #[test]
+    fn symbol_interning() {
+        let mut symbol_table = SymbolTable::new();
+
+        for _ in 1..30 {
+            symbol_table.intern("goblin");
+        }
+        for _ in 1..30 {
+            symbol_table.intern("orzechy");
+        }
+
+        assert_eq!(symbol_table.len(), 2);
+    }
+
+    #[test]
+    fn symbol_equality() {
+        let mut symbol_table = SymbolTable::new();
+
+        let franek1 = symbol_table.intern("franek");
+        let franek2 = symbol_table.intern("franek");
+        let puzon = symbol_table.intern("puzon");
+
+        assert_eq!(franek1, franek2);
+        assert_ne!(franek1, puzon);
+    }
+
+    #[test]
+    fn symbol_resolve() {
+        let mut symbol_table = SymbolTable::new();
+
+        let francis1 = symbol_table.intern("francis");
+        let francis2 = symbol_table.intern("francis");
+        let trombone = symbol_table.intern("trombone");
+
+        assert_eq!(
+            symbol_table.resolve(francis1),
+            "francis"
+        );
+        assert_eq!(
+            symbol_table.resolve(francis2),
+            "francis"
+        );
+        assert_eq!(
+            symbol_table.resolve(trombone),
+            "trombone"
+        );
+    }
 }
