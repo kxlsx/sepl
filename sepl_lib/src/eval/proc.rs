@@ -74,7 +74,7 @@ impl Procedure {
     /// Return the dummy [`Env`] used
     /// to capture the environment
     /// the [`Procedure`]'s been created in.
-    pub fn captured_env(&self) -> Env {
+    pub fn capture_env(&self) -> Env {
         self.capture_env
     }
 

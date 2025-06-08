@@ -146,13 +146,56 @@ impl EnvTable {
     /// ```
     pub fn symbol_define(&mut self, symbol: Symbol, env: Env, expr: Expr) -> Option<Expr> {
         if let Expr::Procedure(procedure) = &expr {
-            self.increment_capturing_count(procedure.captured_env());
+            self.increment_capturing_count(procedure.capture_env());
         }
 
         self.symbol_definitions
             .entry(env)
             .or_default()
             .insert(symbol, expr)
+    }
+
+    /// [`symbol_undefine`](EnvTable::symbol_undefine), but with `env` set as [`Env::global`].
+    pub fn symbol_undefine_global(&mut self, symbol: Symbol) -> Option<Expr> {
+        self.symbol_undefine(symbol, self.env_global())
+    }
+
+    /// Remove a symbol definition from a given [`Env`].
+    /// Returns the removed definition if it existed.
+    /// 
+    /// If the removed [`Expr`] is a [`Procedure`](super::Procedure),
+    /// its capture_env may be removed from the [`EnvTable`]
+    /// (if there are no more references to it).
+    /// 
+    /// # Example
+    /// ```
+    /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
+    /// 
+    /// let mut symbol_table = SymbolTable::new();
+    /// let bomba = symbol_table.intern("bomba");
+    /// 
+    /// let mut env_table = EnvTable::new();
+    /// 
+    /// env_table.symbol_define_global(bomba, Expr::Lit(Lit::Float(0.)));
+    /// assert_eq!(
+    ///     env_table.symbol_undefine_global(bomba),
+    ///     Some(Expr::Lit(Lit::Float(0.)))
+    /// );
+    /// assert_eq!(
+    ///     env_table.symbol_definition_global(bomba),
+    ///     None
+    /// );
+    /// ```
+    pub fn symbol_undefine(&mut self, symbol: Symbol, env: Env) -> Option<Expr> {
+        let removed = self.symbol_definitions
+            .get_mut(&env)?
+            .remove(&symbol);
+
+        if let Some(Expr::Procedure(procedure)) = &removed {
+            self.decrement_capturing_count(procedure.capture_env());
+        }
+
+        removed
     }
 
     /// [`symbol_definition`](EnvTable::symbol_definition), but with `env` set as [`Env::global`].
@@ -213,6 +256,12 @@ impl EnvTable {
         .map(|map| map.iter())
     }
 
+    /// Returns `true` if the passed [`Env`]
+    /// exists in the [`EnvTable`].
+    pub fn env_exists(&self, env: Env) -> bool {
+        self.env_tree.contains_key(&env)
+    }
+
     /// Returns the global environment.
     pub const fn env_global(&self) -> Env {
         Env::global()
@@ -262,7 +311,7 @@ impl EnvTable {
         if let Some(symbol_defs) = self.symbol_definitions.remove(&env) {
             for (_, expr) in symbol_defs.iter() {
                 if let Expr::Procedure(procedure) = expr {
-                    self.decrement_capturing_count(procedure.captured_env())
+                    self.decrement_capturing_count(procedure.capture_env())
                 }
             }
         }
@@ -272,8 +321,8 @@ impl EnvTable {
         true
     }
 
-        /// Insert an [`EnvTreeNode`] corresponding to an
-        /// [`Env`] into the tree.
+    /// Insert an [`EnvTreeNode`] corresponding to an
+    /// [`Env`] into the tree.
     fn insert_env(&mut self, env: Env, captured_env: Env) {
         self.insert_node(
             env,
