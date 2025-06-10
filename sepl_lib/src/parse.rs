@@ -127,7 +127,7 @@ impl<'s, 'i> Parser<'s, 'i> {
             self.next_token()
         }
     }
-    
+
     /// Return the next [`Token`] and consume it, only if the token matches
     /// `expected`.
     pub fn eat_if_eq(&mut self, expected: Token<'i>) -> Option<Result<Token<'i>, Error>> {

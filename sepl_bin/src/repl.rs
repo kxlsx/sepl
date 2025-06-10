@@ -2,7 +2,9 @@ use linefeed::{Interface, ReadResult, Terminal};
 
 use anyhow::Result;
 use sepl_lib::{
-    eval::{EnvTable, Expr, SymbolTable}, lex::{Lex, Token}, parse::{Error as ParseError, Parser},
+    eval::{EnvTable, Expr, SymbolTable},
+    lex::{Lex, Token},
+    parse::{Error as ParseError, Parser},
     stringify::Stringify,
 };
 
@@ -17,7 +19,11 @@ enum ReplCommand {
 
 fn print_header() {
     // TODO: make this more fun
-    println!("Welcome to {} v{} interactive REPL.\n", env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION"));
+    println!(
+        "Welcome to {} v{} interactive REPL.\n",
+        env!("CARGO_PKG_NAME"),
+        env!("CARGO_PKG_VERSION")
+    );
     println!("type ':h' for help.")
 }
 
@@ -46,15 +52,19 @@ pub fn repl() -> Result<()> {
                     }
                 }
                 println!();
-            },
+            }
             ReplCommand::PrintDefined => {
                 let symbol_defs = env_table.symbols_global();
                 if let Some(defs) = symbol_defs {
-                    for (symbol, expr) in  defs{
-                        println!("'{}' => {}", symbol_table.resolve(*symbol), expr.stringify(&symbol_table));
+                    for (symbol, expr) in defs {
+                        println!(
+                            "'{}' => {}",
+                            symbol_table.resolve(*symbol),
+                            expr.stringify(&symbol_table)
+                        );
                     }
                 }
-            },
+            }
             ReplCommand::Help => print_help(),
             ReplCommand::Quit => break,
         };
@@ -63,7 +73,10 @@ pub fn repl() -> Result<()> {
     Ok(())
 }
 
-fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table: &mut SymbolTable) -> Result<ReplCommand> {
+fn read_repl_command<T: Terminal>(
+    reader_interface: &Interface<T>,
+    symbol_table: &mut SymbolTable,
+) -> Result<ReplCommand> {
     let mut line_buf = String::new();
     let mut exprs = Vec::new();
     'readmore: loop {
@@ -77,11 +90,9 @@ fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table:
         match reader_interface.read_line()? {
             ReadResult::Input(string) => {
                 line_buf.push_str(&string);
-            },
-            ReadResult::Signal(_) => 
-                break Ok(ReplCommand::Quit),
-            ReadResult::Eof => 
-                break Ok(ReplCommand::Quit),
+            }
+            ReadResult::Signal(_) => break Ok(ReplCommand::Quit),
+            ReadResult::Eof => break Ok(ReplCommand::Quit),
         }
 
         if line_buf.trim().starts_with(":") {
@@ -99,9 +110,7 @@ fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table:
 
         for parse_result in parser {
             let parsed_expr = match parse_result {
-                Ok(expr) => {
-                    expr
-                },
+                Ok(expr) => expr,
                 Err(ParseError::UnexpectedEOF) => {
                     continue 'readmore;
                 }
@@ -109,16 +118,16 @@ fn read_repl_command<T: Terminal>(reader_interface: &Interface<T>, symbol_table:
                     println!("{err}");
                     line_buf.clear();
                     continue 'readmore;
-                },
+                }
             };
             exprs.push(parsed_expr);
         }
-        
+
         if !line_buf.trim().is_empty() {
             reader_interface.add_history_unique(line_buf.clone());
         }
 
-        break Ok(ReplCommand::Eval(exprs.into_boxed_slice()))
+        break Ok(ReplCommand::Eval(exprs.into_boxed_slice()));
     }
 }
 

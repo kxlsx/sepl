@@ -6,10 +6,10 @@ use std::{collections::HashMap, slice::from_raw_parts};
 /// characters [interned](SymbolTable::intern)
 /// in the [`SymbolTable`] and can be converted
 /// into a [`&str`](prim@str) using [`SymbolTable::resolve`].
-/// 
+///
 /// <div class="warning">
 /// Warning!
-/// 
+///
 /// Trying to [`resolve`](SymbolTable::resolve) a [`Symbol`]
 /// in a [`SymbolTable`] it has not originated from
 /// is an error and can cause **Undefined Behaviour**.
@@ -19,26 +19,26 @@ pub struct Symbol(*const u8, usize);
 
 /// Struct used for [`String` interning](https://en.wikipedia.org/wiki/String_interning).
 /// The [`intern`](SymbolTable::intern) and [`resolve`](SymbolTable::resolve)
-/// methods are used to convert to-and-from a [`String`]'s [`Symbol`]ic 
+/// methods are used to convert to-and-from a [`String`]'s [`Symbol`]ic
 /// representation.
-/// 
+///
 /// <div class="warning">
 /// Warning!
-/// 
+///
 /// Trying to [`resolve`](SymbolTable::resolve) a [`Symbol`]
 /// in a [`SymbolTable`] it has not originated from
 /// is an error and can cause **Undefined Behaviour**.
 /// </div>
-/// 
+///
 /// # Example
 /// ```
 /// use sepl_lib::eval::SymbolTable;
-/// 
+///
 /// let mut symbol_table = SymbolTable::new();
-/// 
+///
 /// let symbol1 = symbol_table.intern("skrzat");
 /// let symbol2 = symbol_table.intern("środa");
-/// 
+///
 /// assert_eq!(symbol_table.resolve(symbol1), "skrzat");
 /// assert_eq!(symbol_table.resolve(symbol2), "środa");
 /// ```
@@ -54,23 +54,23 @@ impl SymbolTable {
             string_stor: HashMap::new(),
         }
     }
-    
+
     /// Interns the `name` in the [`SymbolTable`].
     /// The name is cloned and stored in the table
     /// if it's not already stored. The method
     /// returns a [`Symbol`] representing
     /// the passed `name`.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::SymbolTable;
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
-    /// 
+    ///
     /// let symbol1 = symbol_table.intern("kamil");
     /// let symbol2 = symbol_table.intern("ślimak");
     /// let symbol3 = symbol_table.intern("ślimak");
-    /// 
+    ///
     /// assert_ne!(symbol1, symbol2);
     /// assert_eq!(symbol2, symbol3);
     /// ```
@@ -89,24 +89,24 @@ impl SymbolTable {
 
     /// Return the [`&str`](prim@str) representation
     /// of the passed [`Symbol`].
-    /// 
+    ///
     /// <div class="warning">
     /// Warning!
-    /// 
+    ///
     /// Trying to [`resolve`](SymbolTable::resolve) a [`Symbol`]
     /// in a [`SymbolTable`] it has not originated from
     /// is an error and can cause **Undefined Behaviour**.
     /// </div>
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::SymbolTable;
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
-    /// 
+    ///
     /// let symbol1 = symbol_table.intern("foo");
     /// let symbol2 = symbol_table.intern("bar");
-    /// 
+    ///
     /// assert_eq!(symbol_table.resolve(symbol1), "foo");
     /// assert_eq!(symbol_table.resolve(symbol2), "bar");
     /// ```
@@ -115,10 +115,10 @@ impl SymbolTable {
 
         // This works, because SymbolTable stores Box<str>, which
         // are all unique heap allocations.
-        unsafe { 
+        unsafe {
             let resolved = str::from_utf8_unchecked(from_raw_parts(ptr, len));
             debug_assert!(
-                self.string_stor.contains_key(resolved), 
+                self.string_stor.contains_key(resolved),
                 "{:?} does not exist in this SymbolTable!",
                 symbol
             );
@@ -184,17 +184,8 @@ mod tests {
         let francis2 = symbol_table.intern("francis");
         let trombone = symbol_table.intern("trombone");
 
-        assert_eq!(
-            symbol_table.resolve(francis1),
-            "francis"
-        );
-        assert_eq!(
-            symbol_table.resolve(francis2),
-            "francis"
-        );
-        assert_eq!(
-            symbol_table.resolve(trombone),
-            "trombone"
-        );
+        assert_eq!(symbol_table.resolve(francis1), "francis");
+        assert_eq!(symbol_table.resolve(francis2), "francis");
+        assert_eq!(symbol_table.resolve(trombone), "trombone");
     }
 }

@@ -35,7 +35,7 @@ pub enum Builtin {
     /// TODO:
     #[strum(serialize = "cat")]
     Concat,
-    /// Evaluates and returns the second 
+    /// Evaluates and returns the second
     /// argument if the first is `true` (or not `nil`),
     /// otherwise evaluates and returns the third.
     #[strum(serialize = "if")]
@@ -60,19 +60,24 @@ pub enum Builtin {
 }
 
 impl Builtin {
-    /// Evaluate the [`Builtin`] with the passed `args`. 
+    /// Evaluate the [`Builtin`] with the passed `args`.
     /// This method can be called as a result of of evaluating the
     /// [`Call`](Expr::Call) expression.
-    /// 
+    ///
     /// # Errors
     /// Every builtin procedure accepts a specific
     /// number and type of arguments. Some builtins
     /// (like [`Lambda`](Builtin::Lambda) and [`Do`](Builtin::Do))
     /// accept any non-zero number of arguments.
-    /// 
+    ///
     /// [`eval`](Builtin::eval) can with [`Error::IncorrectArgCount`]
     /// and [`Error::IncorrectArgType`].
-    pub fn eval(&self, env_table: &mut EnvTable, env: Env, args: LinkedList<Expr>) -> Result<Expr, Error> {
+    pub fn eval(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(env_table, env, args),
             Builtin::Define => self.builtin_define(env_table, env, args),
@@ -92,7 +97,7 @@ impl Builtin {
     }
 
     /// Creates an anonymous procedure.
-    /// 
+    ///
     /// Accepts any non-zero number of arguments,
     /// all have to be `symbols`, except the last one
     /// which can be any expression.
@@ -102,28 +107,28 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() == 0 {
+        if args.is_empty() {
             return Err(Error::IncorrectArgCount {
-            expr: Expr::Builtin(Builtin::Lambda),
-            expected: 2,
-            found: 0 })
+                expr: Expr::Builtin(Builtin::Lambda),
+                expected: 2,
+                found: 0,
+            });
         }
 
         let params = args
             .pop_front()
             .map(|e| match e.eval(env_table, env)? {
-                Expr::List(list) => {
-                    list.into_iter().map(|e| 
-                        match e {
-                            Expr::Symbol(symbol) => Ok(symbol),
-                            other_expr => Err(Error::IncorrectArgType {
-                                builtin: Builtin::Lambda,
-                                expected: expr_type_str!(Symbol),
-                                found: other_expr.as_type_str(),
-                            })
-                        }
-                    ).collect()
-                },
+                Expr::List(list) => list
+                    .into_iter()
+                    .map(|e| match e {
+                        Expr::Symbol(symbol) => Ok(symbol),
+                        other_expr => Err(Error::IncorrectArgType {
+                            builtin: Builtin::Lambda,
+                            expected: expr_type_str!(Symbol),
+                            found: other_expr.as_type_str(),
+                        }),
+                    })
+                    .collect(),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Lambda,
                     expected: expr_type_str!(List),
@@ -144,7 +149,7 @@ impl Builtin {
 
     /// Define a symbol as an expression.
     /// Returns `nil`.
-    /// 
+    ///
     /// Accepts 2 arguments; the first one
     /// is a `symbol`, the second one any
     /// expression.
@@ -190,7 +195,7 @@ impl Builtin {
     }
 
     /// Return the argument without evaluating.
-    /// 
+    ///
     /// Accepts 1 argument.
     fn builtin_quote(
         &self,
@@ -210,7 +215,7 @@ impl Builtin {
     }
 
     /// Evaluate the argument and return it.
-    /// 
+    ///
     /// Accepts 1 argument.
     fn builtin_eval(
         &self,
@@ -234,7 +239,7 @@ impl Builtin {
     }
 
     /// Evaluate every argument and return the last one.
-    /// 
+    ///
     /// Accepts any non-zero number of arguments.
     fn builtin_do(
         &self,
@@ -274,16 +279,17 @@ impl Builtin {
             });
         }
 
-        args.into_iter().next().map(|e| {
-            match e.eval(env_table, env)? {
+        args.into_iter()
+            .next()
+            .map(|e| match e.eval(env_table, env)? {
                 Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Expr::Lit(Lit::Nil))),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
-                })
-            }
-        }).unwrap()
+                }),
+            })
+            .unwrap()
     }
 
     // TODO:
@@ -301,19 +307,20 @@ impl Builtin {
             });
         }
 
-        args.into_iter().next().map(|e| {
-            match e.eval(env_table, env)? {
+        args.into_iter()
+            .next()
+            .map(|e| match e.eval(env_table, env)? {
                 Expr::List(mut list) => {
                     list.pop_front();
                     Ok(Expr::List(list))
-                },
+                }
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
-                })
-            }
-        }).unwrap()
+                }),
+            })
+            .unwrap()
     }
 
     // TODO:
@@ -333,37 +340,39 @@ impl Builtin {
 
         let mut args_iter = args.into_iter();
 
-        let mut a = args_iter.next().map(|e| {
-            match e.eval(env_table, env)? {
+        let mut a = args_iter
+            .next()
+            .map(|e| match e.eval(env_table, env)? {
                 Expr::List(list) => Ok(list),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
-                })
-            }
-        }).unwrap()?;
+                }),
+            })
+            .unwrap()?;
 
-        let mut b = args_iter.next().map(|e| {
-            match e.eval(env_table, env)? {
+        let mut b = args_iter
+            .next()
+            .map(|e| match e.eval(env_table, env)? {
                 Expr::List(list) => Ok(list),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
-                })
-            }
-        }).unwrap()?;
+                }),
+            })
+            .unwrap()?;
 
         a.append(&mut b);
 
         Ok(Expr::List(a))
     }
 
-    /// Evaluates and returns the second 
+    /// Evaluates and returns the second
     /// argument if the first is `true` (or not `nil`),
     /// otherwise evaluates and returns the third.
-    /// 
+    ///
     /// Accepts 3 arguments.
     fn builtin_ifelse(
         &self,
@@ -402,11 +411,10 @@ impl Builtin {
         })
     }
 
-
     /// Returns true if the first argument
     /// is less-than-or-equal to the second
     /// (both must be `float`s).
-    /// 
+    ///
     /// Accepts 2 `float` arguments.
     fn builtin_leq(
         &self,

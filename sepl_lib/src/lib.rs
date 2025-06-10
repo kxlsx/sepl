@@ -6,10 +6,10 @@
 /// Module containing building blocks
 /// of the `sepl` language and ways
 /// to evaluate expressions.
-/// 
-/// Mostly it contains: 
-/// [`Expr`](eval::Expr), 
-/// [`SymbolTable`](eval::SymbolTable) 
+///
+/// Mostly it contains:
+/// [`Expr`](eval::Expr),
+/// [`SymbolTable`](eval::SymbolTable)
 /// and [`EnvTable`](eval::EnvTable).
 pub mod eval;
 /// Module containing the [`Lexer`](lex::Lexer) yielding [`Token`](lex::Token)s `sepl` language.

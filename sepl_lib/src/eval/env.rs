@@ -1,17 +1,17 @@
-use std::collections::{HashMap, hash_map::Iter as HashMapIter};
+use std::collections::{hash_map::Iter as HashMapIter, HashMap};
 
 use strum::IntoEnumIterator;
 
 use crate::eval::{Builtin, Expr, Symbol, SymbolTable};
 
-/// Struct used to represent 
+/// Struct used to represent
 /// a unique environment (or scope)
 /// containing [`Symbol`] definitions.
-/// 
+///
 /// [`Env`]s are returned by the [`EnvTable`]
 /// using [`EnvTable::env_create`] and destroyed
 /// using [`EnvTable::env_try_destroy`].
-/// 
+///
 /// There is a special [`Env`] marked as `global`
 /// that contains every other environment. It can
 /// be obtained using [`Env::global`] or [`EnvTable::env_global`].
@@ -27,40 +27,40 @@ impl Env {
 /// Struct representing the current environment state,
 /// containing all [`Symbol`] definitions contained
 /// in separate environments.
-/// 
+///
 /// Environments can be created using the [`env_create`](EnvTable::env_create)
-/// method. An environment is represented as a unique [`Env`] struct, 
+/// method. An environment is represented as a unique [`Env`] struct,
 /// [`Env::global`] being a special one, representing the root of every [`Env`].
 /// Every [`Env`] must capture (i.e. inherit [`Symbol`] definitions from)
 /// another [`Env`]. There is no automatic garbage collection, and every
 /// environment must be deleted by the [`env_try_destroy`](EnvTable::env_try_destroy)
 /// method (but not necessarily directly).
-/// 
+///
 /// [`Symbol`]s can be defined using the [`symbol_define`](EnvTable::symbol_define)
 /// and [`symbol_define_global`](EnvTable::symbol_define_global) methods and are
 /// automatically deleted when succesfully executing [`env_try_destroy`](EnvTable::env_try_destroy).
 /// Definitions are extracted using the [`symbol_definition`](EnvTable::symbol_definition).
-/// 
+///
 /// [`EnvTable`] can be initialized [`with_builtins`](EnvTable::with_builtins),
 /// meaning every [`Builtin`] will have its [`Symbol`] representation
 /// in the global [`Env`].
-/// 
+///
 /// # Panics
 /// It is considered an error to use an [`Env`] that's been either
 /// destroyed or created using another [`EnvTable`]. Most methods
 /// will [`panic`] in these situations.
-/// 
+///
 /// # Example
 /// ```
 /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
-/// 
+///
 /// let mut symbol_table = SymbolTable::new();
 /// let ten = symbol_table.intern("ten");
-/// 
+///
 /// let mut env_table = EnvTable::new();
-/// 
+///
 /// env_table.symbol_define_global(ten, Expr::Lit(Lit::Float(10.)));
-/// 
+///
 /// assert_eq!(
 ///     env_table.symbol_definition(ten, env_table.env_global()),
 ///     Some(&Expr::Lit(Lit::Float(10.)))
@@ -87,17 +87,17 @@ impl EnvTable {
     /// Create an [`EnvTable`] containing with every [`Builtin`]
     /// defined in the global environment. Every [`Builtin`]'s
     /// name is also interned in the [`SymbolTable`].
-    /// 
+    ///
     /// # Example
     /// ```
-    /// 
+    ///
     /// use sepl_lib::eval::{EnvTable, Expr, Builtin, SymbolTable};
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
-    /// 
+    ///
     /// let lambda_symbol = symbol_table.intern("lambda");
-    /// 
+    ///
     /// assert_eq!(
     ///     env_table.symbol_definition_global(lambda_symbol),
     ///     Some(&Expr::Builtin(Builtin::Lambda))
@@ -121,22 +121,22 @@ impl EnvTable {
 
     /// Define a [`Symbol`] as the passed [`Expr`] in the passed [`Env`].
     /// Returns the previous definition or [`None`].
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let even = symbol_table.intern("this_is_even");
-    /// 
+    ///
     /// let mut env_table = EnvTable::new();
-    /// 
+    ///
     /// env_table.symbol_define_global(even, Expr::Lit(Lit::Float(31.)));
     /// assert_eq!(
     ///     env_table.symbol_definition(even, env_table.env_global()),
     ///     Some(&Expr::Lit(Lit::Float(31.)))
     /// );
-    /// 
+    ///
     /// let previous_def = env_table.symbol_define_global(even, Expr::Lit(Lit::Float(42.)));
     /// assert_eq!(previous_def, Some(Expr::Lit(Lit::Float(31.))));
     /// assert_eq!(
@@ -162,20 +162,20 @@ impl EnvTable {
 
     /// Remove a symbol definition from a given [`Env`].
     /// Returns the removed definition if it existed.
-    /// 
+    ///
     /// If the removed [`Expr`] is a [`Procedure`](super::Procedure),
     /// its capture_env may be removed from the [`EnvTable`]
     /// (if there are no more references to it).
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let bomba = symbol_table.intern("bomba");
-    /// 
+    ///
     /// let mut env_table = EnvTable::new();
-    /// 
+    ///
     /// env_table.symbol_define_global(bomba, Expr::Lit(Lit::Float(0.)));
     /// assert_eq!(
     ///     env_table.symbol_undefine_global(bomba),
@@ -187,9 +187,7 @@ impl EnvTable {
     /// );
     /// ```
     pub fn symbol_undefine(&mut self, symbol: Symbol, env: Env) -> Option<Expr> {
-        let removed = self.symbol_definitions
-            .get_mut(&env)?
-            .remove(&symbol);
+        let removed = self.symbol_definitions.get_mut(&env)?.remove(&symbol);
 
         if let Some(Expr::Procedure(procedure)) = &removed {
             self.decrement_capturing_count(procedure.capture_env());
@@ -208,21 +206,21 @@ impl EnvTable {
     /// the captured environment, the captured environment captured environment, etc.
     /// The search ends at [`Env::global`] and if the definition still cannot be found,
     /// [`None`] is returned.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable, Env};
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let x = symbol_table.intern("x");
     /// let y = symbol_table.intern("y");
-    /// 
+    ///
     /// let mut env_table = EnvTable::new();
     /// let env = env_table.env_create(Env::global());
-    /// 
+    ///
     /// env_table.symbol_define(x, Env::global(), Expr::Lit(Lit::Float(-128.)));
     /// env_table.symbol_define(x, env, Expr::Lit(Lit::Float(4096.)));
-    /// 
+    ///
     /// assert_eq!(
     ///     env_table.symbol_definition(x, Env::global()),
     ///     Some(&Expr::Lit(Lit::Float(-128.)))
@@ -252,8 +250,8 @@ impl EnvTable {
     /// definition in the global environment.
     pub fn symbols_global(&self) -> Option<HashMapIter<Symbol, Expr>> {
         self.symbol_definitions
-        .get(&self.env_global())
-        .map(|map| map.iter())
+            .get(&self.env_global())
+            .map(|map| map.iter())
     }
 
     /// Returns `true` if the passed [`Env`]
@@ -266,7 +264,7 @@ impl EnvTable {
     pub const fn env_global(&self) -> Env {
         Env::global()
     }
-    
+
     /// Returns the number of [`Env`]s
     /// in the [`EnvTable`].
     pub fn env_count(&self) -> usize {
@@ -283,14 +281,14 @@ impl EnvTable {
 
     /// Try to destroy the passed [`Env`] and
     /// the [`Env`]s it captures.
-    /// 
+    ///
     /// Destroying fails if the environment
     /// is captured by any other [`Env`] or
-    /// its bound to a [`Symbol`] 
+    /// its bound to a [`Symbol`]
     /// (i.e. you cannot destroy a [`Procedure`](super::Procedure)'s
     /// environment if its bound to a [`Symbol`]
     /// or contains any other [`Procedure`](super::Procedure)).
-    /// 
+    ///
     /// Returns true if destroying succeeded.
     pub fn env_try_destroy(&mut self, env: Env) -> bool {
         if env == Env::global() {
@@ -363,7 +361,7 @@ impl EnvTable {
 
     /// Decrement the number of environments capturing
     /// the passed [`Env`]. If the `capturing_count`
-    /// ends up as 0, [`env_try_destroy`](EnvTable::env_try_destroy) 
+    /// ends up as 0, [`env_try_destroy`](EnvTable::env_try_destroy)
     /// is called.
     fn decrement_capturing_count(&mut self, env: Env) {
         let node = self.get_node_mut(env);

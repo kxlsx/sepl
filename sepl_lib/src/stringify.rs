@@ -63,7 +63,7 @@ impl Stringify<Symbol, SymbolTable> for EvalError {
             }
             err @ EvalError::IncorrectArgType { builtin, .. } => {
                 format!("<{}>: {}", builtin, err)
-            },
+            }
         }
     }
 }

@@ -14,7 +14,7 @@ pub enum Error {
 }
 
 /// Every token represented by the [`Lexer`]
-/// 
+///
 /// A [`Lexer`] can be created using [`Token::lexer`].
 #[derive(Lex, Debug, Clone, Copy, PartialEq)]
 #[logos(skip r"[ \t\n\f]+")]

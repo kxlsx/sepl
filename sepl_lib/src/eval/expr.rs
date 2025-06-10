@@ -1,11 +1,11 @@
-use std::{hash::Hash, collections::LinkedList};
+use std::{collections::LinkedList, hash::Hash};
 
 use super::{Builtin, Env, EnvTable, Error, Lit, Procedure, Symbol};
 
 /// Macro used to return
 /// a static string representing
 /// an expression's type.
-/// 
+///
 /// Accepts the macro variant name
 /// as input (without the path).
 macro_rules! expr_type_str {
@@ -35,44 +35,44 @@ pub(super) use expr_type_str;
 
 /// Type representing an expression in the
 /// `sepl` language.
-/// 
-/// This is **the** basic building block of 
+///
+/// This is **the** basic building block of
 /// the language, serving both as AST[^ast] and IR[^ir].
 /// The enum variants can also be thought of
 /// as types.
-/// 
+///
 /// [`Expr`] can be constructed
 /// using a [`Parser`](crate::parse::Parser) and
-/// evaluated (i.e. recursively reduced) using the 
-/// [`eval`](Expr::eval) and [`eval_global`](Expr::eval_global) 
-/// functions. 
-/// 
-/// Expressions are always evaluated in a specified 
+/// evaluated (i.e. recursively reduced) using the
+/// [`eval`](Expr::eval) and [`eval_global`](Expr::eval_global)
+/// functions.
+///
+/// Expressions are always evaluated in a specified
 /// environment (scope), which they can possibly modify.
-/// The passed environment and the global state are 
+/// The passed environment and the global state are
 /// represented by the [`Env`] and [`EnvTable`] structs.
-/// 
+///
 /// # Example
 /// ```
 /// use sepl_lib::{
 ///     eval::{Expr, EnvTable, SymbolTable, Lit},
 ///     parse::ParseFrom,
 /// };
-/// 
+///
 /// let mut symbol_table = SymbolTable::new();
 /// let expr = Expr::parse_from(
 ///     "((lambda (x) (* x x)) 16.0)",
 ///     &mut symbol_table
 ///     ).unwrap();
-/// 
+///
 /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
-/// 
+///
 /// assert!(matches!(
 ///     expr.eval_global(&mut env_table),
 ///     Ok(Expr::Lit(Lit::Float(256.)))
 /// ))
 /// ```
-/// 
+///
 /// [^ast]: [Abstract Syntax Tree](https://en.wikipedia.org/wiki/Abstract_syntax_tree)
 /// [^ir]: [Intermediate Representation](https://en.wikipedia.org/wiki/Intermediate_representation)
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -89,34 +89,34 @@ impl Expr {
     pub fn eval_global(self, env_table: &mut EnvTable) -> Result<Self, Error> {
         self.eval(env_table, env_table.env_global())
     }
-    
+
     /// Evaluate the [`Expr`] using the passed
     /// environment state ([`EnvTable`]) in the passed
     /// environment ([`Env`]). If you don't need
     /// to specify the environment, use [`eval_global`](Expr::eval_global).
-    /// 
+    ///
     /// Evaluation rules are described in here: [`sepl_lib`](crate).
-    /// 
+    ///
     /// # Errors
-    /// [`Error::IncorrectArgCount`] and [`Error::IncorrectArgType`] 
+    /// [`Error::IncorrectArgCount`] and [`Error::IncorrectArgType`]
     /// are returned when evaluating a [`Procedure`] or a [`Builtin`]
     /// with incorrect arguments.
-    /// 
+    ///
     /// # Examples
     /// ```
     /// use sepl_lib::{
     ///     eval::{Expr, EnvTable, SymbolTable, Lit, Error},
     ///     parse::ParseFrom,
     /// };
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
-    /// 
+    ///
     /// let expr = Expr::parse_from(
     ///     "(+ 2. (* 3. 4.))",
     ///     &mut symbol_table
     /// ).unwrap();
-    /// 
+    ///
     /// assert!(matches!(
     ///     expr.eval_global(&mut env_table),
     ///     Ok(Expr::Lit(Lit::Float(14.)))
@@ -134,25 +134,28 @@ impl Expr {
             // TODO: Eval args before calling procedure
             Expr::List(mut list) => match list.pop_front().map(|e| e.eval(env_table, env)) {
                 Some(Ok(Expr::Procedure(proc))) => proc.eval(env_table, env, list),
-                Some(Ok(Expr::Builtin(builtin))) => builtin.eval(env_table, env,list),
+                Some(Ok(Expr::Builtin(builtin))) => builtin.eval(env_table, env, list),
                 Some(Ok(other_expr)) => {
-                    let mut tail = list.into_iter().map(|e| e.eval(env_table, env)).collect::<Result<LinkedList<Expr>, Error>>()?;
+                    let mut tail = list
+                        .into_iter()
+                        .map(|e| e.eval(env_table, env))
+                        .collect::<Result<LinkedList<Expr>, Error>>()?;
                     tail.push_front(other_expr);
                     Ok(Expr::List(tail))
                 }
                 Some(Err(error)) => Err(error),
-                None => Ok(Expr::List(list))
+                None => Ok(Expr::List(list)),
             },
         }
     }
 
     /// Return a [&'static str](str) represeting
     /// the expressions type.
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::{Expr, Lit};
-    /// 
+    ///
     /// assert_eq!(
     ///     Expr::Lit(Lit::Float(10.)).as_type_str(),
     ///     "float"
