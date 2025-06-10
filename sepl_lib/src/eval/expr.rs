@@ -141,7 +141,7 @@ impl Expr {
                     Ok(Expr::List(tail))
                 }
                 Some(Err(error)) => Err(error),
-                None => Ok(Expr::Lit(Lit::Nil))
+                None => Ok(Expr::List(list))
             },
         }
     }
