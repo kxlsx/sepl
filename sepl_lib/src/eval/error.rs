@@ -18,6 +18,4 @@ pub enum Error {
         expected: &'static str,
         found: &'static str,
     },
-    #[error("Expression is not callable.")]
-    NotCallable { expr: Expr },
 }

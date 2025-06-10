@@ -27,15 +27,15 @@ impl Stringify<Symbol, SymbolTable> for Expr {
             Expr::Lit(lit) => lit.to_string(),
             Expr::Builtin(builtin) => builtin.to_string(),
             Expr::Procedure(proc) => proc.stringify(symbol_table),
-            Expr::Call(head, tail) => {
-                let head_str = head.stringify(symbol_table);
-                let tail_str = tail.iter().fold(String::new(), |mut buf, expr| {
-                    buf.push(' ');
+            Expr::List(list) => {
+                let mut list_str = list.iter().fold(String::new(), |mut buf, expr| {
                     buf.push_str(&expr.stringify(symbol_table));
+                    buf.push(' ');
                     buf
                 });
+                list_str.pop();
 
-                format!("({head_str}{tail_str})")
+                format!("({list_str})")
             }
         }
     }
@@ -63,10 +63,7 @@ impl Stringify<Symbol, SymbolTable> for EvalError {
             }
             err @ EvalError::IncorrectArgType { builtin, .. } => {
                 format!("<{}>: {}", builtin, err)
-            }
-            ref err @ EvalError::NotCallable { ref expr, .. } => {
-                format!("<{}>: {}", expr.stringify(symbol_table), err)
-            }
+            },
         }
     }
 }

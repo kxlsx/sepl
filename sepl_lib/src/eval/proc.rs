@@ -1,3 +1,5 @@
+use std::collections::LinkedList;
+
 use super::{Env, EnvTable, Error, Expr, Symbol};
 
 /// Type representing an anonymous 
@@ -8,7 +10,7 @@ use super::{Env, EnvTable, Error, Expr, Symbol};
 /// that it's been created in (see [`EnvTable`]).
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Procedure {
-    params: Vec<Symbol>,
+    params: LinkedList<Symbol>,
     body: Box<Expr>,
     capture_env: Env,
 }
@@ -17,7 +19,7 @@ impl Procedure {
     /// Create a new [`Procedure`] capturing
     /// `parent_env` using a dummy [`Env`].
     pub fn new(
-        params: Vec<Symbol>,
+        params: LinkedList<Symbol>,
         body: Box<Expr>,
         parent_env: Env,
         env_table: &mut EnvTable,
@@ -47,7 +49,7 @@ impl Procedure {
         self,
         env_table: &mut EnvTable,
         parent_env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if self.params.len() != args.len() {
             return Err(Error::IncorrectArgCount {
@@ -80,7 +82,7 @@ impl Procedure {
 
     /// Return a slice of the [`Procedure`]'s
     /// parameters.
-    pub fn params(&self) -> &[Symbol] {
+    pub fn params(&self) -> &LinkedList<Symbol> {
         &self.params
     }
 

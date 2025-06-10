@@ -1,3 +1,5 @@
+use std::collections::LinkedList;
+
 use logos::Logos;
 use thiserror::Error;
 
@@ -11,8 +13,6 @@ pub enum Error {
     ExpectedSymbol { found: String },
     #[error("Expected a literal, found: '{found}'.")]
     ExpectedLit { found: String },
-    #[error("Expressions cannot be empty.")]
-    ExpectedExpr,
     #[error("Expected '(', '[', or '}}', found: '{found}'.")]
     ExpectedLeftBracket { found: String },
     #[error("Expected a matching '{expected}', found '{found}'.")]
@@ -67,21 +67,9 @@ impl<'s, 'i> Parser<'s, 'i> {
 
         self.eat();
 
-        let head = if self.eat_if_eq(matching_bracket).is_none() {
-            Box::new(self.parse_expr().map_err(|err| match err {
-                Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
-                    found,
-                    expected: matching_bracket.to_string(),
-                },
-                _ => err,
-            })?)
-        } else {
-            return Err(Error::ExpectedExpr);
-        };
-
-        let mut body = Vec::new();
+        let mut list = LinkedList::new();
         while self.eat_if_eq(matching_bracket).is_none() {
-            body.push(self.parse_expr().map_err(|err| match err {
+            list.push_back(self.parse_expr().map_err(|err| match err {
                 Error::ExpectedLeftBracket { found } => Error::ExpectedRightBracket {
                     found,
                     expected: matching_bracket.to_string(),
@@ -90,7 +78,7 @@ impl<'s, 'i> Parser<'s, 'i> {
             })?);
         }
 
-        Ok(Expr::Call(head, body))
+        Ok(Expr::List(list))
     }
 
     /// Try to parse a [`Symbol`].
@@ -262,10 +250,10 @@ mod tests {
 
     macro_rules! assert_expr_call {
         ({ head: $head_predicate:expr, tail: [ $($tail_predicate:expr),* ] } = $exp:expr) => {
-            if let Expr::Call(head, tail) = $exp {
-                $head_predicate(*head);
+            if let Expr::List(mut list) = $exp {
+                $head_predicate(list.pop_front().expect("Head does not exst"));
 
-                let mut tailiter = tail.into_iter();
+                let mut tailiter = list.into_iter();
                 $(
                     $tail_predicate(tailiter.next().expect("Tail is shorter than expected!"));
                 )*
@@ -394,18 +382,6 @@ mod tests {
             })
         );
         parser.eat();
-
-        Ok(())
-    }
-
-    #[test]
-    fn parse_err_expected_expr() -> Result<(), Error> {
-        let source = "(function arg1 ())";
-
-        let mut symbol_table = SymbolTable::new();
-        let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
-
-        assert_eq!(Expr::parse(&mut parser), Err(Error::ExpectedExpr),);
 
         Ok(())
     }

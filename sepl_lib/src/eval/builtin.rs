@@ -1,6 +1,8 @@
+use std::collections::LinkedList;
+
 use strum_macros::{AsRefStr, Display, EnumIter};
 
-use super::{expr_type_str, Env, EnvTable, Error, Expr, Lit, Procedure, Symbol};
+use super::{expr_type_str, Env, EnvTable, Error, Expr, Lit, Procedure};
 
 /// Type representing a bulitin procedure.
 /// These are automatically assigned to their
@@ -24,6 +26,15 @@ pub enum Builtin {
     /// last one.
     #[strum(serialize = "do")]
     Do,
+    /// TODO:
+    #[strum(serialize = "head")]
+    Head,
+    /// TODO:
+    #[strum(serialize = "tail")]
+    Tail,
+    /// TODO:
+    #[strum(serialize = "cat")]
+    Concat,
     /// Evaluates and returns the second 
     /// argument if the first is `true` (or not `nil`),
     /// otherwise evaluates and returns the third.
@@ -61,13 +72,16 @@ impl Builtin {
     /// 
     /// [`eval`](Builtin::eval) can with [`Error::IncorrectArgCount`]
     /// and [`Error::IncorrectArgType`].
-    pub fn eval(&self, env_table: &mut EnvTable, env: Env, args: Vec<Expr>) -> Result<Expr, Error> {
+    pub fn eval(&self, env_table: &mut EnvTable, env: Env, args: LinkedList<Expr>) -> Result<Expr, Error> {
         match self {
             Builtin::Lambda => self.builtin_lambda(env_table, env, args),
             Builtin::Define => self.builtin_define(env_table, env, args),
             Builtin::Quote => self.builtin_quote(env_table, env, args),
             Builtin::Eval => self.builtin_eval(env_table, env, args),
             Builtin::Do => self.builtin_do(env_table, env, args),
+            Builtin::Head => self.builtin_head(env_table, env, args),
+            Builtin::Tail => self.builtin_tail(env_table, env, args),
+            Builtin::Concat => self.builtin_concat(env_table, env, args),
             Builtin::IfElse => self.builtin_ifelse(env_table, env, args),
             Builtin::Leq => self.builtin_leq(env_table, env, args),
             Builtin::Add => self.builtin_add(env_table, env, args),
@@ -86,25 +100,39 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        mut args: Vec<Expr>,
+        mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        let body = args.pop().ok_or(Error::IncorrectArgCount {
+        if args.len() == 0 {
+            return Err(Error::IncorrectArgCount {
             expr: Expr::Builtin(Builtin::Lambda),
-            expected: 1,
-            found: 0,
-        })?;
+            expected: 2,
+            found: 0 })
+        }
 
         let params = args
-            .into_iter()
+            .pop_front()
             .map(|e| match e.eval(env_table, env)? {
-                Expr::Symbol(symbol) => Ok(symbol),
+                Expr::List(list) => {
+                    list.into_iter().map(|e| 
+                        match e.eval(env_table, env)? {
+                            Expr::Symbol(symbol) => Ok(symbol),
+                            other_expr => Err(Error::IncorrectArgType {
+                                builtin: Builtin::Lambda,
+                                expected: expr_type_str!(Symbol),
+                                found: other_expr.as_type_str(),
+                            })
+                        }
+                    ).collect()
+                },
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Lambda,
-                    expected: expr_type_str!(Symbol),
+                    expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
                 }),
             })
-            .collect::<Result<Vec<Symbol>, Error>>()?;
+            .unwrap()?;
+
+        let body = args.pop_front().unwrap();
 
         Ok(Expr::Procedure(Procedure::new(
             params,
@@ -124,7 +152,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -168,7 +196,7 @@ impl Builtin {
         &self,
         _env_table: &mut EnvTable,
         _env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount {
@@ -188,7 +216,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 1 {
             return Err(Error::IncorrectArgCount {
@@ -212,7 +240,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        mut args: Vec<Expr>,
+        mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() <= 1 {
             return Err(Error::IncorrectArgCount {
@@ -222,13 +250,114 @@ impl Builtin {
             });
         }
 
-        let arg_last = args.pop().unwrap();
+        let arg_last = args.pop_back().unwrap();
 
         for arg in args {
             arg.eval(env_table, env)?;
         }
 
         arg_last.eval(env_table, env)
+    }
+
+    // TODO:
+    fn builtin_head(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 1 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Head),
+                expected: 1,
+                found: args.len(),
+            });
+        }
+
+        args.into_iter().next().map(|e| {
+            match e.eval(env_table, env)? {
+                Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Expr::Lit(Lit::Nil))),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Head,
+                    expected: expr_type_str!(List),
+                    found: other_expr.as_type_str(),
+                })
+            }
+        }).unwrap()
+    }
+
+    // TODO:
+    fn builtin_tail(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 1 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Tail),
+                expected: 1,
+                found: args.len(),
+            });
+        }
+
+        args.into_iter().next().map(|e| {
+            match e.eval(env_table, env)? {
+                Expr::List(mut list) => {
+                    list.pop_front();
+                    Ok(Expr::List(list))
+                },
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Head,
+                    expected: expr_type_str!(List),
+                    found: other_expr.as_type_str(),
+                })
+            }
+        }).unwrap()
+    }
+
+    // TODO:
+    fn builtin_concat(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Tail),
+                expected: 1,
+                found: args.len(),
+            });
+        }
+
+        let mut args_iter = args.into_iter();
+
+        let mut a = args_iter.next().map(|e| {
+            match e.eval(env_table, env)? {
+                Expr::List(list) => Ok(list),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Head,
+                    expected: expr_type_str!(List),
+                    found: other_expr.as_type_str(),
+                })
+            }
+        }).unwrap()?;
+
+        let mut b = args_iter.next().map(|e| {
+            match e.eval(env_table, env)? {
+                Expr::List(list) => Ok(list),
+                other_expr => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Head,
+                    expected: expr_type_str!(List),
+                    found: other_expr.as_type_str(),
+                })
+            }
+        }).unwrap()?;
+
+        a.append(&mut b);
+
+        Ok(Expr::List(a))
     }
 
     /// Evaluates and returns the second 
@@ -240,7 +369,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 3 {
             return Err(Error::IncorrectArgCount {
@@ -283,7 +412,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -329,7 +458,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -375,7 +504,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -421,7 +550,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -467,7 +596,7 @@ impl Builtin {
         &self,
         env_table: &mut EnvTable,
         env: Env,
-        args: Vec<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {

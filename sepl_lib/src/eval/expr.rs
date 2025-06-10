@@ -1,4 +1,4 @@
-use std::hash::Hash;
+use std::{hash::Hash, collections::LinkedList};
 
 use super::{Builtin, Env, EnvTable, Error, Lit, Procedure, Symbol};
 
@@ -27,8 +27,8 @@ macro_rules! expr_type_str {
     (Builtin) => {
         "procedure"
     };
-    (Call) => {
-        "procedure call"
+    (List) => {
+        "list"
     };
 }
 pub(super) use expr_type_str;
@@ -79,7 +79,7 @@ pub(super) use expr_type_str;
 pub enum Expr {
     Symbol(Symbol),
     Lit(Lit),
-    Call(Box<Expr>, Vec<Expr>),
+    List(LinkedList<Expr>),
     Procedure(Procedure),
     Builtin(Builtin),
 }
@@ -143,12 +143,18 @@ impl Expr {
                 Some(expr) => expr.clone().eval(env_table, env),
                 None => Ok(Expr::Symbol(symbol)),
             },
-            Expr::Call(head, tail) => match head.eval(env_table, env)? {
-                Expr::Procedure(proc) => proc.eval(env_table, env, tail),
-                Expr::Builtin(builtin) => builtin.eval(env_table, env, tail),
-                uncallable_expr => Err(Error::NotCallable {
-                    expr: uncallable_expr,
-                }),
+            // TODO: Eval args before calling procedure
+            Expr::List(mut list) => match list.pop_front().map(|e| e.eval(env_table, env)) {
+                Some(Ok(Expr::Procedure(proc))) => proc.eval(env_table, env, list),
+                Some(Ok(Expr::Builtin(builtin))) => builtin.eval(env_table, env,list),
+                Some(Ok(other_expr)) => {
+                    list.push_front(other_expr);
+
+
+                    Ok(Expr::List(list.into_iter().map(|e| e.eval(env_table, env)).collect::<Result<LinkedList<Expr>, Error>>()?))
+                }
+                Some(Err(error)) => Err(error),
+                None => Ok(Expr::Lit(Lit::Nil))
             },
         }
     }
@@ -173,7 +179,7 @@ impl Expr {
             Expr::Symbol(_) => expr_type_str!(Symbol),
             Expr::Procedure(_) => expr_type_str!(Procedure),
             Expr::Builtin(_) => expr_type_str!(Builtin),
-            Expr::Call(..) => expr_type_str!(Call),
+            Expr::List(..) => expr_type_str!(List),
         }
     }
 }
@@ -354,19 +360,6 @@ mod tests {
             "true"  => Ok(Expr::Lit(Lit::Bool(true))),
             "false" => Ok(Expr::Lit(Lit::Bool(false))),
             "nil"   => Ok(Expr::Lit(Lit::Nil)),
-        );
-
-        Ok(())
-    }
-
-    #[test]
-    fn eval_not_callable() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
-
-        assert_evals_from_str!(
-            with symbol_table, env_table:
-            "((+ 2. 3.) e)"  => Err(Error::NotCallable { .. }),
         );
 
         Ok(())
