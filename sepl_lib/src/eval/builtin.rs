@@ -114,7 +114,7 @@ impl Builtin {
             .map(|e| match e.eval(env_table, env)? {
                 Expr::List(list) => {
                     list.into_iter().map(|e| 
-                        match e.eval(env_table, env)? {
+                        match e {
                             Expr::Symbol(symbol) => Ok(symbol),
                             other_expr => Err(Error::IncorrectArgType {
                                 builtin: Builtin::Lambda,

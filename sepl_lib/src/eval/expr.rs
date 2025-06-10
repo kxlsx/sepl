@@ -61,7 +61,7 @@ pub(super) use expr_type_str;
 /// 
 /// let mut symbol_table = SymbolTable::new();
 /// let expr = Expr::parse_from(
-///     "((lambda x (* x x)) 16.0)",
+///     "((lambda (x) (* x x)) 16.0)",
 ///     &mut symbol_table
 ///     ).unwrap();
 /// 
@@ -98,8 +98,6 @@ impl Expr {
     /// Evaluation rules are described in here: [`sepl_lib`](crate).
     /// 
     /// # Errors
-    /// Evaluation fails with [`Error::NotCallable`] when trying to evaluate a [`Call`](Expr::Call)
-    /// with a not callable expression (i.e. not a [`Builtin`] or [`Procedure`]). 
     /// [`Error::IncorrectArgCount`] and [`Error::IncorrectArgType`] 
     /// are returned when evaluating a [`Procedure`] or a [`Builtin`]
     /// with incorrect arguments.
@@ -123,16 +121,6 @@ impl Expr {
     ///     expr.eval_global(&mut env_table),
     ///     Ok(Expr::Lit(Lit::Float(14.)))
     /// ));
-    /// 
-    /// let expr = Expr::parse_from(
-    ///     "(2. (+ 2. 3.))",
-    ///     &mut symbol_table
-    /// ).unwrap();
-    /// 
-    /// assert!(matches!(
-    ///     expr.eval_global(&mut env_table),
-    ///     Err(Error::NotCallable{..})
-    /// ));
     /// ```
     pub fn eval(self, env_table: &mut EnvTable, env: Env) -> Result<Self, Error> {
         match self {
@@ -148,10 +136,9 @@ impl Expr {
                 Some(Ok(Expr::Procedure(proc))) => proc.eval(env_table, env, list),
                 Some(Ok(Expr::Builtin(builtin))) => builtin.eval(env_table, env,list),
                 Some(Ok(other_expr)) => {
-                    list.push_front(other_expr);
-
-
-                    Ok(Expr::List(list.into_iter().map(|e| e.eval(env_table, env)).collect::<Result<LinkedList<Expr>, Error>>()?))
+                    let mut tail = list.into_iter().map(|e| e.eval(env_table, env)).collect::<Result<LinkedList<Expr>, Error>>()?;
+                    tail.push_front(other_expr);
+                    Ok(Expr::List(tail))
                 }
                 Some(Err(error)) => Err(error),
                 None => Ok(Expr::Lit(Lit::Nil))
@@ -248,19 +235,19 @@ mod tests {
             with symbol_table, env_table:
             "(define x 2.0)" => Ok(Expr::Lit(Lit::Nil)),
             "(define y 4096.0)" => Ok(Expr::Lit(Lit::Nil)),
-            "((lambda x (do (define y 1.) (+ x y))) 0.5)"
+            "((lambda (x) (do (define y 1.) (+ x y))) 0.5)"
                 => Err(Error::IncorrectArgType {
                     builtin: Builtin::Lambda,
                     expected: expr_type_str!(Symbol),
                     found: expr_type_str!(Lit::Float),
                 }),
-            "((lambda (quote x) (do (define y 1.) (+ x y))) 0.5)"
+            "((lambda ((quote x)) (do (define y 1.) (+ x y))) 0.5)"
                 => Err(Error::IncorrectArgType {
                     builtin: Builtin::Define,
                     expected: expr_type_str!(Symbol),
                     found: expr_type_str!(Lit::Float),
                 }),
-            "((lambda (quote x) (do (define (quote y) 1.) (+ x y))) 0.5)"
+            "((lambda ((quote x)) (do (define (quote y) 1.) (+ x y))) 0.5)"
                 => Ok(Expr::Lit(Lit::Float(1.5))),
             "x" => Ok(Expr::Lit(Lit::Float(2.))),
             "y" => Ok(Expr::Lit(Lit::Float(4096.))),
@@ -276,9 +263,9 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, env_table:
-            "(define = (lambda a b (if (<= a b) (<= b a) false)))"
+            "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
+            "(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(fact 10.)"
                 => Ok(Expr::Lit(Lit::Float(3628800.0))),
@@ -294,11 +281,11 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, env_table:
-            "(define = (lambda a b (if (<= a b) (<= b a) false)))"
+            "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define fib (lambda a b n (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
+            "(define fib (lambda (a b n) (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define fib_bad (lambda n (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))"
+            "(define fib_bad (lambda (n) (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(fib 0. 1. 10.)"
                 => Ok(Expr::Lit(Lit::Float(55.))),
@@ -316,7 +303,7 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, env_table:
-            "(define f (lambda a (lambda b (lambda c (+ a (+ b c))))))"
+            "(define f (lambda (a) (lambda (b) (lambda (c) (+ a (+ b c))))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(((f 2.) 2.) 2.)"
                 => Ok(Expr::Lit(Lit::Float(6.))),
@@ -332,15 +319,15 @@ mod tests {
 
         assert_evals_from_str!(
             with symbol_table, env_table:
-            "(define cons (lambda x y (lambda m (m x y))))"
+            "(define cons (lambda (x y) (lambda (m) (m x y))))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define car (lambda z (z (lambda p q p))))"
+            "(define car (lambda (z) (z (lambda (p q) p))))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define cdr (lambda z (z (lambda p q q))))"
+            "(define cdr (lambda (z) (z (lambda (p q) q))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define list (cons 1.0 (cons 2. (cons 3. nil))))"
                 => Ok(Expr::Lit(Lit::Nil)),
-            "(define sum (lambda xs (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
+            "(define sum (lambda (xs) (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(sum list)"
                 => Ok(Expr::Lit(Lit::Float(6.))),
