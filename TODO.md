@@ -15,9 +15,9 @@
 - readme
 - true, false  & nil don't need to exist (they can be symbols)
 - clean up code
-- eval args before calling (before Procedure::eval), this will clean up code 
 - check docs
 - add tests for lists
 - (last (x y z w))
 - fix ((lambda x x) x)  infinite recursion
 - add = (would work for symbols)
+- figure out list syntax
