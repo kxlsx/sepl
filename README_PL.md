@@ -45,7 +45,7 @@ literałami.
 
 W języku zawarte są następujące wbudowane procedury:
 - `(define x expr)` - Definiuje symbol `x` jako wyrażenie `expr`.
-- `(lambda x1 ... xn expr)` - Tworzy anonimową procedurę 
+- `(lambda (x1 ... xn) expr)` - Tworzy anonimową procedurę 
 o argumentach `x1, ... xn` i ciele `expr`
 - `(quote expr)` - Zwraca `expr` bez ewaluacji.
 - `(eval expr)` - Ewaluuje i zwraca `expr`.
@@ -57,18 +57,18 @@ o argumentach `x1, ... xn` i ciele `expr`
 ## Przykładowe programy
 Program liczący wynik 52!:
 ```lisp
-(define = (lambda a b (if (<= a b) (<= b a) false)))
-(define fact (lambda n (if (= n 0.0) 1. (* n (fact (- n 1.))))))
+(define = (lambda (a b) (if (<= a b) (<= b a) false)))
+(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))
 (fact 52.0)
 ```
 Program liczący sumę listy zawierającej
 liczby 1, 2, 3.
 ```lisp
-(define cons (lambda x y (lambda m (m x y))))
-(define car (lambda z (z (lambda p q p))))
-(define cdr (lambda z (z (lambda p q q))))
+(define cons (lambda (x y) (lambda (m) (m x y))))
+(define car (lambda (z) (z (lambda (p q) p))))
+(define cdr (lambda (z) (z (lambda (p q) q))))
 (define list (cons 1.0 (cons 2. (cons 3. nil))))
-(define sum (lambda xs (if (cdr xs) (+ (car xs) (sum (cxs))) (car xs))))
+(define sum (lambda (xs) (if (cdr xs) (+ (car xs) (sum (cxs))) (car xs))))
 (sum list)
 ```
 
