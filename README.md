@@ -9,6 +9,10 @@ most of the basic lisp special forms are here.
 
 ## Building
 
+The project is split into two rust crates:
+- `sepl-lib` - containing the parser & evaluation engine.
+- `sepl` - containing a command line REPL. 
+
 ```
 $ cargo build     # compile both the library and the binary
 $ cargo test      # run unit tests
