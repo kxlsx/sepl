@@ -264,7 +264,10 @@ impl Builtin {
         arg_last.eval(env_table, env)
     }
 
-    // TODO:
+    /// Returns the first item of the passed list
+    /// (or nil if it's empty).
+    ///
+    /// Accepts an argument that evaluates to a list.
     fn builtin_head(
         &self,
         env_table: &mut EnvTable,
@@ -292,7 +295,9 @@ impl Builtin {
             .unwrap()
     }
 
-    // TODO:
+    /// Returns the list without the first item.
+    ///
+    /// Accepts an argument that evaluates to a list.
     fn builtin_tail(
         &self,
         env_table: &mut EnvTable,
@@ -323,7 +328,9 @@ impl Builtin {
             .unwrap()
     }
 
-    // TODO:
+    /// Returns the result of concatenating two lists.
+    ///
+    /// Accepts two arguments that evaluate to two lists.
     fn builtin_concat(
         &self,
         env_table: &mut EnvTable,
