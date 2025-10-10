@@ -107,11 +107,11 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.is_empty() {
+        if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
                 expr: Expr::Builtin(Builtin::Lambda),
                 expected: 2,
-                found: 0,
+                found: args.len(),
             });
         }
 
