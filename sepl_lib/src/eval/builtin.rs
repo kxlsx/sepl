@@ -182,14 +182,7 @@ impl Builtin {
             .unwrap()?;
         let body = args_iter.next().unwrap().eval(env_table, env)?;
 
-        // This prevents recursive definitions
-        // e.g. '(define x x)'
-        match body {
-            Expr::Symbol(body_symbol) if body_symbol == symbol => (),
-            _ => {
-                env_table.symbol_define(symbol, env, body);
-            }
-        }
+        env_table.symbol_define(symbol, env, body);
 
         Ok(Expr::Lit(Lit::Nil))
     }

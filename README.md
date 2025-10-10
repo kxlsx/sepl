@@ -1,3 +1,13 @@
+<!-- TODO: UPDATE README:
+    1. ((lambda (x) x) x) no longer crashes
+    2. Symbols definitions are evaluated on calling define,
+       so this produces following behaviour:
+        > (define x y) (define y z) (define z x)
+        nil nil nil
+        > x y z
+        y z y
+       (look up the name of this resolving scheme in Structure & Interpretation of Computer Programs)
+-->
 # <img src="./res/img/mouth.gif" height="20"> sepl <img src="./res/img/mouth.gif" height="20">
 
 An interpreter for a minimal [`lisp`](https://en.wikipedia.org/wiki/Lisp_(programming_language)).

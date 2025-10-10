@@ -128,7 +128,7 @@ impl Expr {
             Expr::Builtin(builtin) => Ok(Expr::Builtin(builtin)),
             Expr::Procedure(proc) => Ok(Expr::Procedure(proc)),
             Expr::Symbol(symbol) => match env_table.symbol_definition(symbol, env) {
-                Some(expr) => expr.clone().eval(env_table, env),
+                Some(expr) => Ok(expr.clone()),
                 None => Ok(Expr::Symbol(symbol)),
             },
             // TODO: Eval args before calling procedure
@@ -224,6 +224,19 @@ mod tests {
             "x" => Ok(Expr::Symbol(_)),
             "y" => Ok(Expr::Symbol(_)),
             "z" => Ok(Expr::Symbol(_)),
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn eval_lambda_shadowing() -> Result<(), Error> {
+        let mut symbol_table = SymbolTable::new();
+        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+
+        assert_evals_from_str!(
+            with symbol_table, env_table:
+            "((lambda (x) x) x)" => Ok(Expr::Symbol(_)),
         );
 
         Ok(())
