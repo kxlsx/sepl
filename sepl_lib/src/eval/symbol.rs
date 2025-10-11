@@ -1,6 +1,23 @@
 use core::str;
 use std::{collections::HashMap, slice::from_raw_parts};
 
+/// Trait representing a type
+/// that can resolve other types (`S`)
+/// into [`&str`](str).
+pub trait Resolve<S> {
+    fn resolve(&self, symbol: S) -> &str;
+}
+
+/// Trait representing a type
+/// that can intern a name [`&str`](str)
+/// returning a symbol of type `S`.
+pub trait Intern<S> 
+where 
+    Self: Resolve<S>
+{
+    fn intern(&mut self, name: &str) -> Symbol;
+}
+
 /// Type represeting any `symbol` value.
 /// Every [`Symbol`] represents a string of
 /// characters [interned](SymbolTable::intern)
@@ -143,6 +160,18 @@ impl SymbolTable {
 impl Default for SymbolTable {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Resolve<Symbol> for SymbolTable {
+    fn resolve(&self, symbol: Symbol) -> &str {
+        SymbolTable::resolve(self, symbol)
+    }
+}
+
+impl Intern<Symbol> for SymbolTable {
+    fn intern(&mut self, name: &str) -> Symbol {
+        SymbolTable::intern(self, name)
     }
 }
 

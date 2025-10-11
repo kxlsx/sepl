@@ -2,7 +2,7 @@ use linefeed::{Interface, ReadResult, Terminal};
 
 use anyhow::Result;
 use sepl_lib::{
-    eval::{EnvTable, Expr, SymbolTable},
+    eval::{EnvTable, Expr},
     lex::{Lex, Token},
     parse::{Error as ParseError, Parser},
     stringify::Stringify,
@@ -35,20 +35,19 @@ fn print_help() {
 }
 
 pub fn repl() -> Result<()> {
-    let mut symbol_table = SymbolTable::new();
-    let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+    let mut env_table = EnvTable::with_builtins();
 
     let reader_interface = Interface::new("sepl")?;
 
     print_header();
     loop {
-        match read_repl_command(&reader_interface, &mut symbol_table)? {
+        match read_repl_command(&reader_interface, &mut env_table)? {
             ReplCommand::Eval(parsed_exprs) => {
                 for parsed_expr in parsed_exprs {
                     let evald_expr = parsed_expr.eval_global(&mut env_table);
                     match evald_expr {
-                        Ok(expr) => print!("{} ", expr.stringify(&symbol_table)),
-                        Err(err) => println!("{}", err.stringify(&symbol_table)),
+                        Ok(expr) => print!("{} ", expr.stringify(&env_table)),
+                        Err(err) => println!("{}", err.stringify(&env_table)),
                     }
                 }
                 println!();
@@ -59,8 +58,8 @@ pub fn repl() -> Result<()> {
                     for (symbol, expr) in defs {
                         println!(
                             "'{}' => {}",
-                            symbol_table.resolve(*symbol),
-                            expr.stringify(&symbol_table)
+                            env_table.symbol_resolve(*symbol),
+                            expr.stringify(&env_table)
                         );
                     }
                 }
@@ -75,7 +74,7 @@ pub fn repl() -> Result<()> {
 
 fn read_repl_command<T: Terminal>(
     reader_interface: &Interface<T>,
-    symbol_table: &mut SymbolTable,
+    symbol_table: &mut EnvTable,
 ) -> Result<ReplCommand> {
     let mut line_buf = String::new();
     let mut exprs = Vec::new();

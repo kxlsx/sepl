@@ -3,7 +3,7 @@ use std::collections::LinkedList;
 use logos::Logos;
 use thiserror::Error;
 
-use crate::eval::{Expr, Lit, Symbol, SymbolTable};
+use crate::eval::{Expr, Intern, Lit, Symbol};
 use crate::lex::{Error as LexError, Lexer, Token};
 
 /// Error type returned by the [`Parser`].
@@ -28,18 +28,18 @@ pub enum Error {
 /// parse [`Expr`]s from a [`Lexer`],
 /// inserting encountered symbols
 /// into a [`SymbolTable`].
-pub struct Parser<'s, 'i> {
+pub struct Parser<'s, 'i, I: Intern<Symbol>> {
     lexer: Lexer<'i, Token<'i>>,
     lookahead_token: Option<Option<Result<Token<'i>, LexError>>>,
-    symbol_table: &'s mut SymbolTable,
+    symbol_interner: &'s mut I,
 }
 
-impl<'s, 'i> Parser<'s, 'i> {
+impl<'s, 'i, I: Intern<Symbol>> Parser<'s, 'i, I> {
     /// Create a new [`Parser`].
-    pub fn new(lexer: Lexer<'i, Token<'i>>, symbol_table: &'s mut SymbolTable) -> Self {
+    pub fn new(lexer: Lexer<'i, Token<'i>>, symbol_interner: &'s mut I) -> Self {
         Parser {
             lexer,
-            symbol_table,
+            symbol_interner,
             lookahead_token: None,
         }
     }
@@ -86,7 +86,7 @@ impl<'s, 'i> Parser<'s, 'i> {
         match self.lookahead() {
             Some(Ok(Token::Symbol(name))) => {
                 self.eat();
-                Ok(self.symbol_table.intern(name))
+                Ok(self.symbol_interner.intern(name))
             }
             Some(Ok(other_token)) => Err(Error::ExpectedSymbol {
                 found: other_token.to_string(),
@@ -169,7 +169,7 @@ impl<'s, 'i> Parser<'s, 'i> {
     }
 }
 
-impl<'s, 'i> Iterator for Parser<'s, 'i> {
+impl<'s, 'i, I: Intern<Symbol>> Iterator for Parser<'s, 'i, I> {
     type Item = Result<Expr, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -183,61 +183,63 @@ impl<'s, 'i> Iterator for Parser<'s, 'i> {
 
 /// Trait representing a type
 /// that can be created using a [`Parser`].
-pub trait Parse
+pub trait Parse<I>
 where
     Self: Sized,
+    I: Intern<Symbol>
 {
-    fn parse(parser: &mut Parser) -> Result<Self, Error>;
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Error>;
 }
 
-impl Parse for Symbol {
-    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+impl<I: Intern<Symbol>> Parse<I> for Symbol {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Error> {
         parser.parse_symbol()
     }
 }
 
-impl Parse for Lit {
-    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+impl<I: Intern<Symbol>> Parse<I> for Lit {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Error> {
         parser.parse_lit()
     }
 }
 
-impl Parse for Expr {
-    fn parse(parser: &mut Parser) -> Result<Self, Error> {
+impl <I: Intern<Symbol>> Parse<I> for Expr {
+    fn parse(parser: &mut Parser<I>) -> Result<Self, Error> {
         parser.parse_expr()
     }
 }
 
 /// Trait representing a type
 /// that can be created from `T`.
-pub trait ParseFrom<T>
+pub trait ParseFrom<T, I: Intern<Symbol>>
 where
     Self: Sized,
 {
-    fn parse_from(value: T, symbol_table: &mut SymbolTable) -> Result<Self, Error>;
+    fn parse_from(value: T, symbol_interner: &mut I) -> Result<Self, Error>;
 }
 
-impl ParseFrom<&str> for Expr {
-    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Expr::parse(&mut Parser::new(Token::lexer(value), symbol_table))
+impl<I: Intern<Symbol>> ParseFrom<&str, I> for Expr {
+    fn parse_from(value: &str, symbol_interner: &mut I) -> Result<Self, Error> {
+        Expr::parse(&mut Parser::new(Token::lexer(value), symbol_interner))
     }
 }
 
-impl ParseFrom<&str> for Symbol {
-    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Symbol::parse(&mut Parser::new(Token::lexer(value), symbol_table))
+impl<I: Intern<Symbol>> ParseFrom<&str, I> for Symbol {
+    fn parse_from(value: &str, symbol_interner: &mut I) -> Result<Self, Error> {
+        Symbol::parse(&mut Parser::new(Token::lexer(value), symbol_interner))
     }
 }
 
-impl ParseFrom<&str> for Lit {
-    fn parse_from(value: &str, symbol_table: &mut SymbolTable) -> Result<Self, Error> {
-        Lit::parse(&mut Parser::new(Token::lexer(value), symbol_table))
+impl<I: Intern<Symbol>> ParseFrom<&str, I> for Lit {
+    fn parse_from(value: &str, symbol_interner: &mut I) -> Result<Self, Error> {
+        Lit::parse(&mut Parser::new(Token::lexer(value), symbol_interner))
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::super::eval::SymbolTable;
 
     macro_rules! assert_symbol {
         ($symbol:expr) => {

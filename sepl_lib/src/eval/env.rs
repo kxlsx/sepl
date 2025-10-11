@@ -2,7 +2,7 @@ use std::collections::{hash_map::Iter as HashMapIter, HashMap};
 
 use strum::IntoEnumIterator;
 
-use crate::eval::{Builtin, Expr, Symbol, SymbolTable};
+use crate::eval::{Builtin, Expr, Intern, Resolve, Symbol, SymbolTable};
 
 /// Struct used to represent
 /// a unique environment (or scope)
@@ -25,8 +25,8 @@ impl Env {
 }
 
 /// Struct representing the current environment state,
-/// containing all [`Symbol`] definitions contained
-/// in separate environments.
+/// containing all [`Symbol`]s and their definitions contained
+/// in separate scopes.
 ///
 /// Environments can be created using the [`env_create`](EnvTable::env_create)
 /// method. An environment is represented as a unique [`Env`] struct,
@@ -35,6 +35,9 @@ impl Env {
 /// another [`Env`]. There is no automatic garbage collection, and every
 /// environment must be deleted by the [`env_try_destroy`](EnvTable::env_try_destroy)
 /// method (but not necessarily directly).
+/// 
+/// New [`Symbol`]s can be added using [`symbol_intern`](EnvTable::symbol_intern)
+/// and they can be resolved to their names using [`symbol_resolve`](EnvTable::symbol_resolve).
 ///
 /// [`Symbol`]s can be defined using the [`symbol_define`](EnvTable::symbol_define)
 /// and [`symbol_define_global`](EnvTable::symbol_define_global) methods and are
@@ -46,18 +49,16 @@ impl Env {
 /// in the global [`Env`].
 ///
 /// # Panics
-/// It is considered an error to use an [`Env`] that's been either
+/// It is considered an error to use an [`Env`] or a [`Symbol`] that's been either
 /// destroyed or created using another [`EnvTable`]. Most methods
 /// will [`panic`] in these situations.
 ///
 /// # Example
 /// ```
-/// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
-///
-/// let mut symbol_table = SymbolTable::new();
-/// let ten = symbol_table.intern("ten");
+/// use sepl_lib::eval::{EnvTable, Expr, Lit};
 ///
 /// let mut env_table = EnvTable::new();
+/// let ten = env_table.symbol_intern("ten");
 ///
 /// env_table.symbol_define_global(ten, Expr::Lit(Lit::Float(10.)));
 ///
@@ -71,47 +72,60 @@ pub struct EnvTable {
     env_allocator: EnvAllocator,
     env_tree: HashMap<Env, EnvTreeNode>,
     symbol_definitions: HashMap<Env, HashMap<Symbol, Expr>>,
+    symbol_table: SymbolTable,
 }
 
 impl EnvTable {
     /// Create an [`EnvTable`] containing
-    /// only the global environment with no definitions.
+    /// only the global environment with no definitions and [`Symbol`]s.
     pub fn new() -> Self {
         EnvTable {
             env_allocator: EnvAllocator::new(),
             env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
             symbol_definitions: HashMap::new(),
+            symbol_table: SymbolTable::new(),
         }
     }
 
-    /// Create an [`EnvTable`] containing with every [`Builtin`]
+    /// Create an [`EnvTable`] containing every [`Builtin`]
     /// defined in the global environment. Every [`Builtin`]'s
-    /// name is also interned in the [`SymbolTable`].
+    /// associated name is interned as a [`Symbol`].
     ///
     /// # Example
     /// ```
     ///
     /// use sepl_lib::eval::{EnvTable, Expr, Builtin, SymbolTable};
     ///
-    /// let mut symbol_table = SymbolTable::new();
-    /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+    /// let mut env_table = EnvTable::with_builtins();
     ///
-    /// let lambda_symbol = symbol_table.intern("lambda");
+    /// let lambda_symbol = env_table.symbol_intern("lambda");
     ///
     /// assert_eq!(
     ///     env_table.symbol_definition_global(lambda_symbol),
     ///     Some(&Expr::Builtin(Builtin::Lambda))
     /// )
     /// ```
-    pub fn with_builtins(symbol_table: &mut SymbolTable) -> Self {
+    pub fn with_builtins() -> Self {
         let mut env_table = Self::new();
 
         for builtin in Builtin::iter() {
-            let symbol = symbol_table.intern(builtin.as_ref());
+            let symbol = env_table.symbol_intern(builtin.as_ref());
             env_table.symbol_define_global(symbol, Expr::Builtin(builtin));
         }
 
         env_table
+    }
+
+    /// Intern a new [`Symbol`] in the internal [`SymbolTable`].
+    /// See [`SymbolTable::intern`]. 
+    pub fn symbol_intern(&mut self, name: &str) -> Symbol {
+        self.symbol_table.intern(name)
+    }
+
+    /// Resolves the [`Symbol`]'s name in the internal [`SymbolTable`].
+    /// See [`SymbolTable::resolve`]. 
+    pub fn symbol_resolve(&self, symbol: Symbol) -> &str {
+        self.symbol_table.resolve(symbol)
     }
 
     /// [`symbol_define`](EnvTable::symbol_define), but with `env` set as [`Env::global`].
@@ -126,10 +140,8 @@ impl EnvTable {
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
     ///
-    /// let mut symbol_table = SymbolTable::new();
-    /// let even = symbol_table.intern("this_is_even");
-    ///
     /// let mut env_table = EnvTable::new();
+    /// let even = env_table.symbol_intern("this_is_even");
     ///
     /// env_table.symbol_define_global(even, Expr::Lit(Lit::Float(31.)));
     /// assert_eq!(
@@ -171,10 +183,8 @@ impl EnvTable {
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
     ///
-    /// let mut symbol_table = SymbolTable::new();
-    /// let bomba = symbol_table.intern("bomba");
-    ///
     /// let mut env_table = EnvTable::new();
+    /// let bomba = env_table.symbol_intern("bomba");
     ///
     /// env_table.symbol_define_global(bomba, Expr::Lit(Lit::Float(0.)));
     /// assert_eq!(
@@ -211,12 +221,11 @@ impl EnvTable {
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable, Env};
     ///
-    /// let mut symbol_table = SymbolTable::new();
-    /// let x = symbol_table.intern("x");
-    /// let y = symbol_table.intern("y");
-    ///
     /// let mut env_table = EnvTable::new();
     /// let env = env_table.env_create(Env::global());
+    /// 
+    /// let x = env_table.symbol_intern("x");
+    /// let y = env_table.symbol_intern("y");
     ///
     /// env_table.symbol_define(x, Env::global(), Expr::Lit(Lit::Float(-128.)));
     /// env_table.symbol_define(x, env, Expr::Lit(Lit::Float(4096.)));
@@ -396,6 +405,18 @@ impl EnvTable {
 impl Default for EnvTable {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Resolve<Symbol> for EnvTable {
+    fn resolve(&self, symbol: Symbol) -> &str {
+        self.symbol_resolve(symbol)
+    }
+}
+
+impl Intern<Symbol> for EnvTable {
+    fn intern(&mut self, name: &str) -> Symbol {
+        self.symbol_intern(name)
     }
 }
 

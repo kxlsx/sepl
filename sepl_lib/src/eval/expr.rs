@@ -55,17 +55,16 @@ pub(super) use expr_type_str;
 /// # Example
 /// ```
 /// use sepl_lib::{
-///     eval::{Expr, EnvTable, SymbolTable, Lit},
+///     eval::{Expr, EnvTable, Lit},
 ///     parse::ParseFrom,
 /// };
 ///
-/// let mut symbol_table = SymbolTable::new();
+/// let mut env_table = EnvTable::with_builtins();
+/// 
 /// let expr = Expr::parse_from(
 ///     "((lambda (x) (* x x)) 16.0)",
-///     &mut symbol_table
+///     &mut env_table
 ///     ).unwrap();
-///
-/// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
 ///
 /// assert!(matches!(
 ///     expr.eval_global(&mut env_table),
@@ -105,16 +104,15 @@ impl Expr {
     /// # Examples
     /// ```
     /// use sepl_lib::{
-    ///     eval::{Expr, EnvTable, SymbolTable, Lit, Error},
+    ///     eval::{Expr, EnvTable, Lit, Error},
     ///     parse::ParseFrom,
     /// };
     ///
-    /// let mut symbol_table = SymbolTable::new();
-    /// let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+    /// let mut env_table = EnvTable::with_builtins();
     ///
     /// let expr = Expr::parse_from(
     ///     "(+ 2. (* 3. 4.))",
-    ///     &mut symbol_table
+    ///     &mut env_table
     /// ).unwrap();
     ///
     /// assert!(matches!(
@@ -178,15 +176,14 @@ impl Expr {
 mod tests {
     use crate::parse::ParseFrom;
 
-    use super::super::SymbolTable;
     use super::*;
 
     macro_rules! assert_evals_from_str {
-        (with $symbol_table:ident, $env_table:ident: $($string:literal => $expected:pat),+, ) => {
+        (with $env_table:ident: $($string:literal => $expected:pat),+, ) => {
             $({
             let tmp = Expr::parse_from(
                 $string,
-                &mut $symbol_table
+                &mut $env_table
             ).expect("Parse error!");
 
             let tmp_eval = tmp.eval(&mut $env_table, Env::global());
@@ -197,11 +194,10 @@ mod tests {
 
     #[test]
     fn eval_define() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define pi 3.1415)" => Ok(Expr::Lit(Lit::Nil)),
             "pi" => Ok(Expr::Lit(Lit::Float(3.1415))),
         );
@@ -211,11 +207,10 @@ mod tests {
 
     #[test]
     fn eval_define_recursive() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define x x)" => Ok(Expr::Lit(Lit::Nil)),
             "x" => Ok(Expr::Symbol(_)),
             "(define x y)" => Ok(Expr::Lit(Lit::Nil)),
@@ -244,11 +239,10 @@ mod tests {
 
     #[test]
     fn eval_define_scope() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define x 2.0)" => Ok(Expr::Lit(Lit::Nil)),
             "(define y 4096.0)" => Ok(Expr::Lit(Lit::Nil)),
             "((lambda (x) (do (define y 1.) (+ x y))) 0.5)"
@@ -274,11 +268,10 @@ mod tests {
 
     #[test]
     fn eval_factorial() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
@@ -292,11 +285,10 @@ mod tests {
 
     #[test]
     fn eval_fib() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define fib (lambda (a b n) (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
@@ -314,11 +306,10 @@ mod tests {
 
     #[test]
     fn eval_curried() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define f (lambda (a) (lambda (b) (lambda (c) (+ a (+ b c))))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(((f 2.) 2.) 2.)"
@@ -330,11 +321,10 @@ mod tests {
 
     #[test]
     fn eval_cons_as_lambda() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "(define cons (lambda (x y) (lambda (m) (m x y))))"
                 => Ok(Expr::Lit(Lit::Nil)),
             "(define car (lambda (z) (z (lambda (p q) p))))"
@@ -354,11 +344,10 @@ mod tests {
 
     #[test]
     fn eval_lits() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "42."   => Ok(Expr::Lit(Lit::Float(42.))),
             "true"  => Ok(Expr::Lit(Lit::Bool(true))),
             "false" => Ok(Expr::Lit(Lit::Bool(false))),
