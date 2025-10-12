@@ -26,17 +26,17 @@ pub enum Builtin {
     /// last one.
     #[strum(serialize = "do")]
     Do,
-    /// TODO:
+    /// Returns the first item of a list.
     #[strum(serialize = "head")]
     Head,
-    /// TODO:
+    /// Returns the passed list without the first item.
     #[strum(serialize = "tail")]
     Tail,
-    /// TODO:
+    /// Returns the result of concatenating two lists.
     #[strum(serialize = "cat")]
     Concat,
     /// Evaluates and returns the second
-    /// argument if the first is `true` (or not `nil`),
+    /// argument if the first is not `false`.
     /// otherwise evaluates and returns the third.
     #[strum(serialize = "if")]
     IfElse,
@@ -61,8 +61,8 @@ pub enum Builtin {
 
 impl Builtin {
     /// Evaluate the [`Builtin`] with the passed `args`.
-    /// This method can be called as a result of of evaluating the
-    /// [`Call`](Expr::Call) expression.
+    /// This method can be called as a result of of evaluating a
+    /// [`List`](Expr::List) expression whose head is a [`Builtin`].
     ///
     /// # Errors
     /// Every builtin procedure accepts a specific
@@ -94,6 +94,32 @@ impl Builtin {
             Builtin::Mul => self.builtin_mul(env_table, env, args),
             Builtin::Div => self.builtin_div(env_table, env, args),
         }
+    }
+
+    /// Symbolic value used to represent `ok`.
+    fn builtin_ok(env_table: &mut EnvTable) -> Expr {
+        Expr::Symbol(env_table.symbol_intern("ok"))
+    }
+
+    /// Symbolic value used to represent `nil`.
+    fn builtin_nil(env_table: &mut EnvTable) -> Expr {
+        Expr::Symbol(env_table.symbol_intern("nil"))
+    }
+
+    /// Symbolic value used to represent `true`.
+    fn builtin_true(env_table: &mut EnvTable) -> Expr {
+        Expr::Symbol(env_table.symbol_intern("true"))
+    }
+
+    /// Symbolic value used to represent `false`.
+    fn builtin_false(env_table: &mut EnvTable) -> Expr {
+        Expr::Symbol(env_table.symbol_intern("false"))
+    }
+
+    /// Check the 'truthiness' of the passed expression.
+    fn builtin_boolean_check(expr: Expr, env_table: &mut EnvTable) -> bool {
+        expr != Builtin::builtin_false(env_table)
+        && expr != Builtin::builtin_nil(env_table)
     }
 
     /// Creates an anonymous procedure.
@@ -148,7 +174,7 @@ impl Builtin {
     }
 
     /// Define a symbol as an expression.
-    /// Returns `nil`.
+    /// Returns `ok` as a `symbol`.
     ///
     /// Accepts 2 arguments; the first one
     /// is a `symbol`, the second one any
@@ -184,7 +210,7 @@ impl Builtin {
 
         env_table.symbol_define(symbol, env, body);
 
-        Ok(Expr::Lit(Lit::Nil))
+        Ok(Builtin::builtin_ok(env_table))
     }
 
     /// Return the argument without evaluating.
@@ -258,7 +284,7 @@ impl Builtin {
     }
 
     /// Returns the first item of the passed list
-    /// (or nil if it's empty).
+    /// (or `nil` if it's empty).
     ///
     /// Accepts an argument that evaluates to a list.
     fn builtin_head(
@@ -278,7 +304,7 @@ impl Builtin {
         args.into_iter()
             .next()
             .map(|e| match e.eval(env_table, env)? {
-                Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Expr::Lit(Lit::Nil))),
+                Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Builtin::builtin_nil(env_table))),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
@@ -370,7 +396,7 @@ impl Builtin {
     }
 
     /// Evaluates and returns the second
-    /// argument if the first is `true` (or not `nil`),
+    /// argument if the first is not `false` or `nil`,
     /// otherwise evaluates and returns the third.
     ///
     /// Accepts 3 arguments.
@@ -391,14 +417,7 @@ impl Builtin {
         let mut args_iter = args.into_iter();
 
         let cond = args_iter.next().unwrap().eval(env_table, env).map(|e| {
-            if let Expr::Lit(Lit::Bool(cond)) = e {
-                Ok(cond)
-            } else if let Expr::Lit(Lit::Nil) = e {
-                //FIXME: temporary, maybe add 'ifnull'?
-                Ok(false)
-            } else {
-                Ok(true)
-            }
+            Ok(Builtin::builtin_boolean_check(e, env_table))
         })??;
 
         let exp1 = args_iter.next().unwrap();
@@ -456,8 +475,14 @@ impl Builtin {
                     found: other_expr.as_type_str(),
                 }),
             })??;
-
-        Ok(Expr::Lit(Lit::Bool(a <= b)))
+            
+        Ok(
+            if a <= b {
+                Builtin::builtin_true(env_table)
+            } else {
+                Builtin::builtin_false(env_table)
+            }
+        )
     }
 
     /// Return the result of adding

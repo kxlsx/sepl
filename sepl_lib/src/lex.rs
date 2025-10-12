@@ -38,15 +38,6 @@ pub enum Token<'i> {
         priority = 5
     )]
     Float(f64),
-    /// `true`
-    #[token("true")]
-    True,
-    /// `false`
-    #[token("false")]
-    False,
-    /// `nil`
-    #[token("nil")]
-    Nil,
     /// A string of letters or punctuation or digits that's
     /// not a number.
     #[regex(r"((?&letter)|(?&special))+|(?&symbol_start)((?&letter)|(?&special)|(?&digit))+")]
@@ -63,9 +54,6 @@ impl<'i> Display for Token<'i> {
             Token::RightBracket(BracketType::Square) => write!(f, "]"),
             Token::RightBracket(BracketType::Curly) => write!(f, "}}"),
             Token::Float(float) => write!(f, "{}", float),
-            Token::True => write!(f, "true"),
-            Token::False => write!(f, "false"),
-            Token::Nil => write!(f, "nil"),
             Token::Symbol(name) => write!(f, "{}", name),
         }
     }
@@ -138,19 +126,6 @@ mod tests {
         assert_token!(lexer, Token::Symbol("-"));
         assert_token!(lexer, Token::Symbol("-abba"));
         assert_token!(lexer, Token::Symbol("arg1"));
-        assert_empty!(lexer);
-
-        Ok(())
-    }
-
-    #[test]
-    fn lex_keywords() -> Result<(), Error> {
-        let source = "true false nil";
-        let mut lexer = Token::lexer(source);
-
-        assert_token!(lexer, Token::True);
-        assert_token!(lexer, Token::False);
-        assert_token!(lexer, Token::Nil);
         assert_empty!(lexer);
 
         Ok(())

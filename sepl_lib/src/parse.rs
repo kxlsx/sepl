@@ -27,7 +27,8 @@ pub enum Error {
 /// the `sepl` lanugage. Used to
 /// parse [`Expr`]s from a [`Lexer`],
 /// inserting encountered symbols
-/// into a [`SymbolTable`].
+/// into the passed string interner 
+/// (struct implementing [`Intern`])
 pub struct Parser<'s, 'i, I: Intern<Symbol>> {
     lexer: Lexer<'i, Token<'i>>,
     lookahead_token: Option<Option<Result<Token<'i>, LexError>>>,
@@ -100,9 +101,6 @@ impl<'s, 'i, I: Intern<Symbol>> Parser<'s, 'i, I> {
     pub fn parse_lit(&mut self) -> Result<Lit, Error> {
         let lit = match self.lookahead() {
             Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
-            Some(Ok(Token::True)) => Ok(Lit::Bool(true)),
-            Some(Ok(Token::False)) => Ok(Lit::Bool(false)),
-            Some(Ok(Token::Nil)) => Ok(Lit::Nil),
             Some(Ok(other_token)) => Err(Error::ExpectedLit {
                 found: other_token.to_string(),
             }),
@@ -290,16 +288,10 @@ mod tests {
 
     #[test]
     fn parse_lits() -> Result<(), Error> {
-        let source = "true false nil 1.443 -1.12 -4231. 1e-10 -15e10";
+        let source = "1.443 -1.12 -4231. 1e-10 -15e10";
 
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
-
-        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Bool(true)));
-
-        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Bool(false)));
-
-        assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Nil));
 
         assert_eq!(Expr::parse(&mut parser)?, Expr::Lit(Lit::Float(1.443)));
 
@@ -316,25 +308,11 @@ mod tests {
 
     #[test]
     fn parse_err_symbol() -> Result<(), Error> {
-        let source = "true false 8000. ()[]{}";
+        let source = "8000. ()[]{}";
 
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        assert_eq!(
-            Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol {
-                found: String::from("true")
-            })
-        );
-        parser.eat();
-        assert_eq!(
-            Symbol::parse(&mut parser),
-            Err(Error::ExpectedSymbol {
-                found: String::from("false")
-            })
-        );
-        parser.eat();
         assert_eq!(
             Symbol::parse(&mut parser),
             Err(Error::ExpectedSymbol {

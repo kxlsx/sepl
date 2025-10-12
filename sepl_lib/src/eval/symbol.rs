@@ -3,13 +3,17 @@ use std::{collections::HashMap, slice::from_raw_parts};
 
 /// Trait representing a type
 /// that can resolve other types (`S`)
-/// into [`&str`](str).
+/// into [`&str`](prim@str).
 pub trait Resolve<S> {
     fn resolve(&self, symbol: S) -> &str;
+
+    fn resolves_to(&self, symbol: S, name: &str) -> bool {
+        self.resolve(symbol) == name
+    }
 }
 
 /// Trait representing a type
-/// that can intern a name [`&str`](str)
+/// that can intern a name [`&str`](prim@str)
 /// returning a symbol of type `S`.
 pub trait Intern<S> 
 where 

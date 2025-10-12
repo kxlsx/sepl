@@ -2,7 +2,6 @@
 //! an [`evaluate`](eval::Expr::eval) `sepl`
 //! expressions, stored as [`Expr`](eval::Expr)s.
 // TODO: more docs here
-// TODO: UPDATE DOCS WITH NEW INTERNING!!!!
 
 /// Module containing building blocks
 /// of the `sepl` language and ways

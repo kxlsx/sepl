@@ -32,8 +32,8 @@ impl Procedure {
     }
 
     /// Evaluate the [`Procedure`] with the
-    /// passed `args`. This method can be called as a result of of evaluating the
-    /// [`Call`](Expr::Call) expression.
+    /// passed `args`. This method can be called as a result of of evaluating a
+    /// [`List`](Expr::List) expression whose head is a [`Procedure`].
     ///
     /// A new [`Env`] containing every
     /// parameter's new definition is always created and passed
