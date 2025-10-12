@@ -218,11 +218,10 @@ mod tests {
 
     #[test]
     fn eval_lambda_shadowing() -> Result<(), Error> {
-        let mut symbol_table = SymbolTable::new();
-        let mut env_table = EnvTable::with_builtins(&mut symbol_table);
+        let mut env_table = EnvTable::with_builtins();
 
         assert_evals_from_str!(
-            with symbol_table, env_table:
+            with env_table:
             "((lambda (x) x) x)" => Ok(Expr::Symbol(_)),
         );
 
