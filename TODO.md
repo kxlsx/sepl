@@ -17,5 +17,4 @@
 - check docs
 - add tests for lists
 - (last (x y z w))
-- add = (would work for symbols)
 - figure out list syntax

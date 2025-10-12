@@ -40,6 +40,10 @@ pub enum Builtin {
     /// otherwise evaluates and returns the third.
     #[strum(serialize = "if")]
     IfElse,
+    /// Returns true if the arguments are
+    /// equal.
+    #[strum(serialize = "=")]
+    Eq,
     /// Returns true if the first argument
     /// is less-than-or-equal to the second
     /// (both must be `float`s)
@@ -67,7 +71,7 @@ impl Builtin {
     /// # Errors
     /// Every builtin procedure accepts a specific
     /// number and type of arguments. Some builtins
-    /// (like [`Lambda`](Builtin::Lambda) and [`Do`](Builtin::Do))
+    /// (like [`Do`](Builtin::Do))
     /// accept any non-zero number of arguments.
     ///
     /// [`eval`](Builtin::eval) can with [`Error::IncorrectArgCount`]
@@ -88,6 +92,7 @@ impl Builtin {
             Builtin::Tail => self.builtin_tail(env_table, env, args),
             Builtin::Concat => self.builtin_concat(env_table, env, args),
             Builtin::IfElse => self.builtin_ifelse(env_table, env, args),
+            Builtin::Eq => self.builtin_eq(env_table, env, args),
             Builtin::Leq => self.builtin_leq(env_table, env, args),
             Builtin::Add => self.builtin_add(env_table, env, args),
             Builtin::Sub => self.builtin_sub(env_table, env, args),
@@ -120,6 +125,24 @@ impl Builtin {
     fn builtin_boolean_check(expr: Expr, env_table: &mut EnvTable) -> bool {
         expr != Builtin::builtin_false(env_table)
         && expr != Builtin::builtin_nil(env_table)
+    }
+
+    /// Check whether two expressions match.
+    /// 1. The expressions must be of the same type.
+    /// 2. List equality is checked recursively, element by element.
+    /// 3. Procedure equality is checked with reference equality
+    /// 4. Others are checked directly.
+    fn builtin_expr_match(expr_a: Expr, expr_b: Expr) -> bool {
+        match (expr_a, expr_b) {
+            (Expr::List(list_a), Expr::List(list_b)) =>
+                list_a.len() == list_b.len() 
+                && list_a.into_iter().zip(list_b).all(|(a, b)| Builtin::builtin_expr_match(a, b)),
+            (Expr::Builtin(a), Expr::Builtin(b)) => a == b,
+            (Expr::Procedure(a), Expr::Procedure(b)) => a == b,
+            (Expr::Symbol(a), Expr::Symbol(b)) => a == b,
+            (Expr::Lit(Lit::Float(a)), Expr::Lit(Lit::Float(b))) => a == b,
+            (_, _) => false,
+        }
     }
 
     /// Creates an anonymous procedure.
@@ -428,6 +451,47 @@ impl Builtin {
         } else {
             exp2.eval(env_table, env)?
         })
+    }
+
+    /// Returns true if the arguments are equal.
+    /// 1. The expressions must be of the same type.
+    /// 2. List equality is checked recursively, element by element.
+    /// 3. Procedure equality is checked with reference equality
+    /// 4. Others are checked directly
+    /// 
+    /// Accepts 2 arguments of any type.
+    fn builtin_eq(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 2 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Eq),
+                expected: 2,
+                found: args.len(),
+            });
+        }
+
+        let mut args_iter = args.into_iter();
+
+        let expr_a = args_iter
+            .next()
+            .unwrap()
+            .eval(env_table, env)?;
+        let expr_b = args_iter
+            .next()
+            .unwrap()
+            .eval(env_table, env)?;
+        
+        Ok(
+            if Builtin::builtin_expr_match(expr_a, expr_b) {
+                Builtin::builtin_true(env_table)
+            } else {
+                Builtin::builtin_false(env_table)
+            }
+        )
     }
 
     /// Returns true if the first argument

@@ -263,8 +263,6 @@ mod tests {
 
         assert_evals_from_str!(
             with env_table:
-            "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
-                => Ok(_),
             "(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
                 => Ok(_),
             "(fact 10.)"
@@ -280,8 +278,6 @@ mod tests {
 
         assert_evals_from_str!(
             with env_table:
-            "(define = (lambda (a b) (if (<= a b) (<= b a) false)))"
-                => Ok(_),
             "(define fib (lambda (a b n) (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
                 => Ok(_),
             "(define fib_bad (lambda (n) (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))"
