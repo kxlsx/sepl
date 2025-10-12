@@ -362,7 +362,7 @@ impl Builtin {
                     Ok(Expr::List(list))
                 }
                 other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Head,
+                    builtin: Builtin::Tail,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
                 }),
@@ -394,7 +394,7 @@ impl Builtin {
             .map(|e| match e.eval(env_table, env)? {
                 Expr::List(list) => Ok(list),
                 other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Head,
+                    builtin: Builtin::Concat,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
                 }),
@@ -406,7 +406,7 @@ impl Builtin {
             .map(|e| match e.eval(env_table, env)? {
                 Expr::List(list) => Ok(list),
                 other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Head,
+                    builtin: Builtin::Concat,
                     expected: expr_type_str!(List),
                     found: other_expr.as_type_str(),
                 }),
