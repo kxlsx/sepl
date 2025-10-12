@@ -289,7 +289,7 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() <= 1 {
+        if args.len() < 1 {
             return Err(Error::IncorrectArgCount {
                 expr: Expr::Builtin(Builtin::Do),
                 expected: 1,
