@@ -1,5 +1,7 @@
 use crate::eval::{Error as EvalError, Expr, Procedure, Resolve, Symbol};
 
+use itertools::Itertools;
+
 /// Trait representing a type that can
 /// be turned into a [`String`] using
 /// a struct implementing [`Resolve`].
@@ -15,14 +17,12 @@ impl<R: Resolve<Symbol>> Stringify<Symbol, R> for Expr {
             Expr::Builtin(builtin) => builtin.to_string(),
             Expr::Procedure(proc) => proc.stringify(symbol_interner),
             Expr::List(list) => {
-                let mut list_str = list.iter().fold(String::new(), |mut buf, expr| {
-                    buf.push_str(&expr.stringify(symbol_interner));
-                    buf.push(' ');
-                    buf
-                });
-                list_str.pop();
-
-                format!("({list_str})")
+                format!(
+                    "({})",
+                    list.iter()
+                        .map(|expr| expr.stringify(symbol_interner))
+                        .format(" ")
+                )
             }
         }
     }
@@ -30,15 +30,16 @@ impl<R: Resolve<Symbol>> Stringify<Symbol, R> for Expr {
 
 impl<R: Resolve<Symbol>> Stringify<Symbol, R> for Procedure {
     fn stringify(&self, symbol_interner: &R) -> String {
-        let args_str = self.params().iter().fold(String::new(), |mut buf, symbol| {
-            buf.push(' ');
-            buf.push_str(symbol_interner.resolve(*symbol));
-
-            buf
-        });
+        let args_str = format!(
+            "({})",
+            self.params()
+                .iter()
+                .map(|symbol| symbol_interner.resolve(*symbol))
+                .format(" ")
+        );
         let body_str = self.body().stringify(symbol_interner);
 
-        format!("(lambda{args_str} {body_str})")
+        format!("(lambda {args_str} {body_str})")
     }
 }
 

@@ -1,5 +1,6 @@
 use std::collections::LinkedList;
 
+use itertools::Itertools;
 use strum_macros::{AsRefStr, Display, EnumIter};
 
 use super::{expr_type_str, Env, EnvTable, Error, Expr, Lit, Procedure};
@@ -559,23 +560,19 @@ impl Builtin {
             });
         }
 
-        let mut args_iter = args.into_iter();
-        let init = match args_iter.next().unwrap().eval(env_table, env)? {
-            Expr::Lit(Lit::Float(num)) => Ok(num),
-            other_expr => Err(Error::IncorrectArgType {
-                builtin: typ,
-                expected: expr_type_str!(Lit::Float),
-                found: other_expr.as_type_str(),
-            }),
-        }?;
-        let res = args_iter.try_fold(init, |acc, expr| match expr.eval(env_table, env)? {
-            Expr::Lit(Lit::Float(num)) => Ok(binary_operation(acc, num)),
-            other_expr => Err(Error::IncorrectArgType {
-                builtin: typ,
-                expected: expr_type_str!(Lit::Float),
-                found: other_expr.as_type_str(),
-            }),
-        })?;
+        let res = args
+            .into_iter()
+            .map(|expr| match expr.eval(env_table, env) {
+                Ok(Expr::Lit(Lit::Float(num))) => Ok(num),
+                Ok(other_expr) => Err(Error::IncorrectArgType {
+                    builtin: typ,
+                    expected: expr_type_str!(Lit::Float),
+                    found: other_expr.as_type_str(),
+                }),
+                Err(error) => Err(error),
+            })
+            .process_results(|floats| floats.reduce(binary_operation))?
+            .unwrap();
 
         Ok(Expr::Lit(Lit::Float(res)))
     }
