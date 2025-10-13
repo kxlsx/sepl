@@ -248,7 +248,7 @@ mod tests {
         };
     }
 
-    macro_rules! assert_expr_call {
+    macro_rules! assert_list {
         ({ head: $head_predicate:expr, tail: [ $($tail_predicate:expr),* ] } = $exp:expr) => {
             if let Expr::List(mut list) = $exp {
                 $head_predicate(list.pop_front().expect("Head does not exst"));
@@ -269,11 +269,11 @@ mod tests {
         let mut symbol_table = SymbolTable::new();
         let mut parser = Parser::new(Token::lexer(source), &mut symbol_table);
 
-        assert_expr_call!({
+        assert_list!({
             head: |h| assert_symbol!(h), 
             tail: [
                 |t| assert_symbol!(t), 
-                |call| assert_expr_call!({
+                |call| assert_list!({
                     head: |h| assert_symbol!(h), 
                     tail: [
                         |t| assert_symbol!(t),
