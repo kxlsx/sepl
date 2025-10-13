@@ -87,14 +87,38 @@ impl EnvTable {
         }
     }
 
+    /// Create an [`EnvTable`] with an already initialized
+    /// [`SymbolTable`].
+    /// 
+    /// # Example
+    /// ```
+    /// use sepl_lib::eval::{EnvTable, Expr, SymbolTable};
+    /// 
+    /// let mut symbol_table = SymbolTable::new();
+    /// let symbol = symbol_table.intern("znaczy");
+    /// 
+    /// let env_table = EnvTable::with_symbol_table(symbol_table);
+    /// assert_eq!(
+    ///     env_table.symbol_resolve(symbol),
+    ///     "znaczy"
+    /// );
+    /// ```
+    pub fn with_symbol_table(symbol_table: SymbolTable) -> Self {
+        EnvTable {
+            env_allocator: EnvAllocator::new(),
+            env_tree: HashMap::from([(Env::global(), EnvTreeNode::global())]),
+            symbol_definitions: HashMap::new(),
+            symbol_table,
+        }
+    }
+
     /// Create an [`EnvTable`] containing every [`Builtin`]
     /// defined in the global environment. Every [`Builtin`]'s
     /// associated name is interned as a [`Symbol`].
     ///
     /// # Example
     /// ```
-    ///
-    /// use sepl_lib::eval::{EnvTable, Expr, Builtin, SymbolTable};
+    /// use sepl_lib::eval::{EnvTable, Expr, Builtin};
     ///
     /// let mut env_table = EnvTable::with_builtins();
     ///
@@ -138,7 +162,7 @@ impl EnvTable {
     ///
     /// # Example
     /// ```
-    /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
+    /// use sepl_lib::eval::{EnvTable, Expr, Lit};
     ///
     /// let mut env_table = EnvTable::new();
     /// let even = env_table.symbol_intern("this_is_even");
@@ -181,7 +205,7 @@ impl EnvTable {
     ///
     /// # Example
     /// ```
-    /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable};
+    /// use sepl_lib::eval::{EnvTable, Expr, Lit};
     ///
     /// let mut env_table = EnvTable::new();
     /// let bomba = env_table.symbol_intern("bomba");
@@ -219,7 +243,7 @@ impl EnvTable {
     ///
     /// # Example
     /// ```
-    /// use sepl_lib::eval::{EnvTable, Expr, Lit, SymbolTable, Env};
+    /// use sepl_lib::eval::{EnvTable, Expr, Lit, Env};
     ///
     /// let mut env_table = EnvTable::new();
     /// let env = env_table.env_create(Env::global());
