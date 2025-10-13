@@ -318,11 +318,11 @@ mod tests {
                 => Ok(_),
             "(define cdr (lambda (z) (z (lambda (p q) q))))"
                 => Ok(_),
-            "(define list (cons 1.0 (cons 2. (cons 3. nil))))"
+            "(define xs (cons 1.0 (cons 2. (cons 3. nil))))"
                 => Ok(_),
-            "(define sum (lambda (xs) (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
+            "(define sum (lambda ((quote xs)) (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
                 => Ok(_),
-            "(sum list)"
+            "(sum xs)"
                 => Ok(Expr::Lit(Lit::Float(6.))),
         );
 
