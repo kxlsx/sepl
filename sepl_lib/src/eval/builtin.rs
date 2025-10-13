@@ -566,6 +566,49 @@ impl Builtin {
         )
     }
 
+    /// Return the result of 'folding'
+    /// the passed arg list using the
+    /// provided binary operation.
+    /// 
+    /// There must be at least 2 args
+    /// and every argument must be a
+    /// `float`.
+    fn binary_numeric_operation<F: Fn(f64, f64) -> f64>(
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+        typ: Builtin,
+        binary_operation: F,
+    ) -> Result<Expr, Error> {
+        if args.len() < 2 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(typ),
+                expected: 2,
+                found: args.len(),
+            });
+        }
+
+        let mut args_iter = args.into_iter();
+        let init = match args_iter.next().unwrap().eval(env_table, env)? {
+            Expr::Lit(Lit::Float(num)) => Ok(num),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: typ,
+                expected: expr_type_str!(Lit::Float),
+                found: other_expr.as_type_str(),
+            }),
+        }?;
+        let res = args_iter.try_fold(init, |acc, expr| match expr.eval(env_table, env)? {
+            Expr::Lit(Lit::Float(num)) => Ok(binary_operation(acc, num)),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: typ,
+                expected: expr_type_str!(Lit::Float),
+                found: other_expr.as_type_str(),
+            }),
+        })?;
+
+        Ok(Expr::Lit(Lit::Float(res)))
+    }
+
     /// Return the result of adding
     /// two `float`s
     fn builtin_add(
@@ -574,42 +617,7 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() != 2 {
-            return Err(Error::IncorrectArgCount {
-                expr: Expr::Builtin(Builtin::Add),
-                expected: 2,
-                found: args.len(),
-            });
-        }
-
-        let mut args_iter = args.into_iter();
-
-        let a = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Add,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-        let b = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Add,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-
-        Ok(Expr::Lit(Lit::Float(a + b)))
+        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Add, |a, b| a + b)
     }
 
     /// Return the result of subtracting
@@ -620,42 +628,7 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() != 2 {
-            return Err(Error::IncorrectArgCount {
-                expr: Expr::Builtin(Builtin::Sub),
-                expected: 2,
-                found: args.len(),
-            });
-        }
-
-        let mut args_iter = args.into_iter();
-
-        let a = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Sub,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-        let b = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Sub,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-
-        Ok(Expr::Lit(Lit::Float(a - b)))
+        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Sub, |a, b| a - b)
     }
 
     /// Return the result of multiplying
@@ -666,42 +639,7 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() != 2 {
-            return Err(Error::IncorrectArgCount {
-                expr: Expr::Builtin(Builtin::Mul),
-                expected: 2,
-                found: args.len(),
-            });
-        }
-
-        let mut args_iter = args.into_iter();
-
-        let a = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Mul,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-        let b = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Mul,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-
-        Ok(Expr::Lit(Lit::Float(a * b)))
+        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Mul, |a, b| a * b)
     }
 
     /// Return the result of dividing
@@ -712,42 +650,7 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() != 2 {
-            return Err(Error::IncorrectArgCount {
-                expr: Expr::Builtin(Builtin::Div),
-                expected: 2,
-                found: args.len(),
-            });
-        }
-
-        let mut args_iter = args.into_iter();
-
-        let a = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Div,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-        let b = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)
-            .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Div,
-                    expected: expr_type_str!(Lit::Float),
-                    found: other_expr.as_type_str(),
-                }),
-            })??;
-
-        Ok(Expr::Lit(Lit::Float(a / b)))
+        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Div, |a, b| a / b)
     }
 }
 
