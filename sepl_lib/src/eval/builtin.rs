@@ -161,7 +161,7 @@ impl Builtin {
     fn builtin_lambda(
         env_table: &mut EnvTable,
         env: Env,
-        mut args: LinkedList<Expr>,
+        args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         if args.len() != 2 {
             return Err(Error::IncorrectArgCount {
@@ -171,29 +171,28 @@ impl Builtin {
             });
         }
 
-        let params = args
-            .pop_front()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::List(list) => list
-                    .into_iter()
-                    .map(|e| match e {
-                        Expr::Symbol(symbol) => Ok(symbol),
-                        other_expr => Err(Error::IncorrectArgType {
-                            builtin: Builtin::Lambda,
-                            expected: expr_type_str!(Symbol),
-                            found: other_expr.as_type_str(),
-                        }),
-                    })
-                    .collect(),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Lambda,
-                    expected: expr_type_str!(List),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()?;
+        let mut args_iter = args.into_iter();
 
-        let body = args.pop_front().unwrap();
+        let params = match args_iter.next().unwrap().eval(env_table, env)? {
+            Expr::List(list) => list
+                .into_iter()
+                .map(|e| match e {
+                    Expr::Symbol(symbol) => Ok(symbol),
+                    other_expr => Err(Error::IncorrectArgType {
+                        builtin: Builtin::Lambda,
+                        expected: expr_type_str!(Symbol),
+                        found: other_expr.as_type_str(),
+                    }),
+                })
+                .collect(),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Lambda,
+                expected: expr_type_str!(List),
+                found: other_expr.as_type_str(),
+            }),
+        }?;
+
+        let body = args_iter.next().unwrap();
 
         Ok(Expr::Procedure(Procedure::new(
             params,
@@ -224,17 +223,15 @@ impl Builtin {
 
         let mut args_iter = args.into_iter();
 
-        let symbol = args_iter
-            .next()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::Symbol(symbol) => Ok(symbol),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Define,
-                    expected: expr_type_str!(Symbol),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()?;
+        let symbol = match args_iter.next().unwrap().eval(env_table, env)? {
+            Expr::Symbol(symbol) => Ok(symbol),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Define,
+                expected: expr_type_str!(Symbol),
+                found: other_expr.as_type_str(),
+            }),
+        }?;
+
         let body = args_iter.next().unwrap().eval(env_table, env)?;
 
         env_table.symbol_define(symbol, env, body);
@@ -340,19 +337,14 @@ impl Builtin {
             });
         }
 
-        args.into_iter()
-            .next()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::List(mut list) => {
-                    Ok(list.pop_front().unwrap_or(Builtin::builtin_nil(env_table)))
-                }
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Head,
-                    expected: expr_type_str!(List),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()
+        match args.into_iter().next().unwrap().eval(env_table, env)? {
+            Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Builtin::builtin_nil(env_table))),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Head,
+                expected: expr_type_str!(List),
+                found: other_expr.as_type_str(),
+            }),
+        }
     }
 
     /// Returns the list without the first item.
@@ -371,20 +363,17 @@ impl Builtin {
             });
         }
 
-        args.into_iter()
-            .next()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::List(mut list) => {
-                    list.pop_front();
-                    Ok(Expr::List(list))
-                }
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Tail,
-                    expected: expr_type_str!(List),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()
+        match args.into_iter().next().unwrap().eval(env_table, env)? {
+            Expr::List(mut list) => {
+                list.pop_front();
+                Ok(Expr::List(list))
+            }
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Tail,
+                expected: expr_type_str!(List),
+                found: other_expr.as_type_str(),
+            }),
+        }
     }
 
     /// Returns the result of concatenating two lists.
@@ -405,33 +394,27 @@ impl Builtin {
 
         let mut args_iter = args.into_iter();
 
-        let mut a = args_iter
-            .next()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::List(list) => Ok(list),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Concat,
-                    expected: expr_type_str!(List),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()?;
+        let mut list_a = match args_iter.next().unwrap().eval(env_table, env)? {
+            Expr::List(list) => Ok(list),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Concat,
+                expected: expr_type_str!(List),
+                found: other_expr.as_type_str(),
+            }),
+        }?;
 
-        let mut b = args_iter
-            .next()
-            .map(|e| match e.eval(env_table, env)? {
-                Expr::List(list) => Ok(list),
-                other_expr => Err(Error::IncorrectArgType {
-                    builtin: Builtin::Concat,
-                    expected: expr_type_str!(List),
-                    found: other_expr.as_type_str(),
-                }),
-            })
-            .unwrap()?;
+        let mut list_b = match args_iter.next().unwrap().eval(env_table, env)? {
+            Expr::List(list) => Ok(list),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::Concat,
+                expected: expr_type_str!(List),
+                found: other_expr.as_type_str(),
+            }),
+        }?;
 
-        a.append(&mut b);
+        list_a.append(&mut list_b);
 
-        Ok(Expr::List(a))
+        Ok(Expr::List(list_a))
     }
 
     /// Evaluates and returns the second
