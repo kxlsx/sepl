@@ -54,7 +54,7 @@ pub(super) use expr_type_str;
 /// };
 ///
 /// let mut env_table = EnvTable::with_builtins();
-/// 
+///
 /// let expr = Expr::parse_from(
 ///     "((lambda (x) (* x x)) 16.0)",
 ///     &mut env_table

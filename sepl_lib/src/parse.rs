@@ -27,7 +27,7 @@ pub enum Error {
 /// the `sepl` lanugage. Used to
 /// parse [`Expr`]s from a [`Lexer`],
 /// inserting encountered symbols
-/// into the passed string interner 
+/// into the passed string interner
 /// (struct implementing [`Intern`])
 pub struct Parser<'s, 'i, I: Intern<Symbol>> {
     lexer: Lexer<'i, Token<'i>>,
@@ -184,7 +184,7 @@ impl<'s, 'i, I: Intern<Symbol>> Iterator for Parser<'s, 'i, I> {
 pub trait Parse<I>
 where
     Self: Sized,
-    I: Intern<Symbol>
+    I: Intern<Symbol>,
 {
     fn parse(parser: &mut Parser<I>) -> Result<Self, Error>;
 }
@@ -201,7 +201,7 @@ impl<I: Intern<Symbol>> Parse<I> for Lit {
     }
 }
 
-impl <I: Intern<Symbol>> Parse<I> for Expr {
+impl<I: Intern<Symbol>> Parse<I> for Expr {
     fn parse(parser: &mut Parser<I>) -> Result<Self, Error> {
         parser.parse_expr()
     }
@@ -236,8 +236,8 @@ impl<I: Intern<Symbol>> ParseFrom<&str, I> for Lit {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::eval::SymbolTable;
+    use super::*;
 
     macro_rules! assert_symbol {
         ($symbol:expr) => {

@@ -15,9 +15,9 @@ pub trait Resolve<S> {
 /// Trait representing a type
 /// that can intern a name [`&str`](prim@str)
 /// returning a symbol of type `S`.
-pub trait Intern<S> 
-where 
-    Self: Resolve<S>
+pub trait Intern<S>
+where
+    Self: Resolve<S>,
 {
     fn intern(&mut self, name: &str) -> Symbol;
 }

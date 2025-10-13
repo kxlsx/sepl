@@ -35,7 +35,7 @@ impl Env {
 /// another [`Env`]. There is no automatic garbage collection, and every
 /// environment must be deleted by the [`env_try_destroy`](EnvTable::env_try_destroy)
 /// method (but not necessarily directly).
-/// 
+///
 /// New [`Symbol`]s can be added using [`symbol_intern`](EnvTable::symbol_intern)
 /// and they can be resolved to their names using [`symbol_resolve`](EnvTable::symbol_resolve).
 ///
@@ -89,14 +89,14 @@ impl EnvTable {
 
     /// Create an [`EnvTable`] with an already initialized
     /// [`SymbolTable`].
-    /// 
+    ///
     /// # Example
     /// ```
     /// use sepl_lib::eval::{EnvTable, Expr, SymbolTable};
-    /// 
+    ///
     /// let mut symbol_table = SymbolTable::new();
     /// let symbol = symbol_table.intern("znaczy");
-    /// 
+    ///
     /// let env_table = EnvTable::with_symbol_table(symbol_table);
     /// assert_eq!(
     ///     env_table.symbol_resolve(symbol),
@@ -141,13 +141,13 @@ impl EnvTable {
     }
 
     /// Intern a new [`Symbol`] in the internal [`SymbolTable`].
-    /// See [`SymbolTable::intern`]. 
+    /// See [`SymbolTable::intern`].
     pub fn symbol_intern(&mut self, name: &str) -> Symbol {
         self.symbol_table.intern(name)
     }
 
     /// Resolves the [`Symbol`]'s name in the internal [`SymbolTable`].
-    /// See [`SymbolTable::resolve`]. 
+    /// See [`SymbolTable::resolve`].
     pub fn symbol_resolve(&self, symbol: Symbol) -> &str {
         self.symbol_table.resolve(symbol)
     }
@@ -247,7 +247,7 @@ impl EnvTable {
     ///
     /// let mut env_table = EnvTable::new();
     /// let env = env_table.env_create(Env::global());
-    /// 
+    ///
     /// let x = env_table.symbol_intern("x");
     /// let y = env_table.symbol_intern("y");
     ///

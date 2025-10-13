@@ -1,5 +1,4 @@
-use crate::eval::{Error as EvalError, Expr, Procedure, Symbol, Resolve};
-
+use crate::eval::{Error as EvalError, Expr, Procedure, Resolve, Symbol};
 
 /// Trait representing a type that can
 /// be turned into a [`String`] using

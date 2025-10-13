@@ -128,8 +128,7 @@ impl Builtin {
 
     /// Check the 'truthiness' of the passed expression.
     fn builtin_boolean_check(expr: Expr, env_table: &mut EnvTable) -> bool {
-        expr != Builtin::builtin_false(env_table)
-        && expr != Builtin::builtin_nil(env_table)
+        expr != Builtin::builtin_false(env_table) && expr != Builtin::builtin_nil(env_table)
     }
 
     /// Check whether two expressions match.
@@ -139,9 +138,13 @@ impl Builtin {
     /// 4. Others are checked directly.
     fn builtin_expr_match(expr_a: Expr, expr_b: Expr) -> bool {
         match (expr_a, expr_b) {
-            (Expr::List(list_a), Expr::List(list_b)) =>
-                list_a.len() == list_b.len() 
-                && list_a.into_iter().zip(list_b).all(|(a, b)| Builtin::builtin_expr_match(a, b)),
+            (Expr::List(list_a), Expr::List(list_b)) => {
+                list_a.len() == list_b.len()
+                    && list_a
+                        .into_iter()
+                        .zip(list_b)
+                        .all(|(a, b)| Builtin::builtin_expr_match(a, b))
+            }
             (Expr::Builtin(a), Expr::Builtin(b)) => a == b,
             (Expr::Procedure(a), Expr::Procedure(b)) => a == b,
             (Expr::Symbol(a), Expr::Symbol(b)) => a == b,
@@ -289,7 +292,7 @@ impl Builtin {
         env: Env,
         mut args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        if args.len() < 1 {
+        if args.is_empty() {
             return Err(Error::IncorrectArgCount {
                 expr: Expr::Builtin(Builtin::Do),
                 expected: 1,
@@ -313,7 +316,10 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        let res: Result<_, Error> = args.into_iter().map(|expr| expr.eval(env_table, env)).collect();
+        let res: Result<_, Error> = args
+            .into_iter()
+            .map(|expr| expr.eval(env_table, env))
+            .collect();
         Ok(Expr::List(res?))
     }
 
@@ -337,7 +343,9 @@ impl Builtin {
         args.into_iter()
             .next()
             .map(|e| match e.eval(env_table, env)? {
-                Expr::List(mut list) => Ok(list.pop_front().unwrap_or(Builtin::builtin_nil(env_table))),
+                Expr::List(mut list) => {
+                    Ok(list.pop_front().unwrap_or(Builtin::builtin_nil(env_table)))
+                }
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Head,
                     expected: expr_type_str!(List),
@@ -446,9 +454,11 @@ impl Builtin {
 
         let mut args_iter = args.into_iter();
 
-        let cond = args_iter.next().unwrap().eval(env_table, env).map(|e| {
-            Ok(Builtin::builtin_boolean_check(e, env_table))
-        })??;
+        let cond = args_iter
+            .next()
+            .unwrap()
+            .eval(env_table, env)
+            .map(|e| Ok(Builtin::builtin_boolean_check(e, env_table)))??;
 
         let exp1 = args_iter.next().unwrap();
         let exp2 = args_iter.next().unwrap();
@@ -465,7 +475,7 @@ impl Builtin {
     /// 2. List equality is checked recursively, element by element.
     /// 3. Procedure equality is checked with reference equality
     /// 4. Others are checked directly
-    /// 
+    ///
     /// Accepts 2 arguments of any type.
     fn builtin_eq(
         env_table: &mut EnvTable,
@@ -482,22 +492,14 @@ impl Builtin {
 
         let mut args_iter = args.into_iter();
 
-        let expr_a = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)?;
-        let expr_b = args_iter
-            .next()
-            .unwrap()
-            .eval(env_table, env)?;
-        
-        Ok(
-            if Builtin::builtin_expr_match(expr_a, expr_b) {
-                Builtin::builtin_true(env_table)
-            } else {
-                Builtin::builtin_false(env_table)
-            }
-        )
+        let expr_a = args_iter.next().unwrap().eval(env_table, env)?;
+        let expr_b = args_iter.next().unwrap().eval(env_table, env)?;
+
+        Ok(if Builtin::builtin_expr_match(expr_a, expr_b) {
+            Builtin::builtin_true(env_table)
+        } else {
+            Builtin::builtin_false(env_table)
+        })
     }
 
     /// Returns true if the first argument
@@ -544,20 +546,18 @@ impl Builtin {
                     found: other_expr.as_type_str(),
                 }),
             })??;
-            
-        Ok(
-            if a <= b {
-                Builtin::builtin_true(env_table)
-            } else {
-                Builtin::builtin_false(env_table)
-            }
-        )
+
+        Ok(if a <= b {
+            Builtin::builtin_true(env_table)
+        } else {
+            Builtin::builtin_false(env_table)
+        })
     }
 
     /// Return the result of 'folding'
     /// the passed arg list using the
     /// provided binary operation.
-    /// 
+    ///
     /// There must be at least 2 args
     /// and every argument must be a
     /// `float`.
