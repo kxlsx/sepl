@@ -26,6 +26,10 @@ pub enum Builtin {
     /// last one.
     #[strum(serialize = "do")]
     Do,
+    /// Return a list containing all args
+    /// evaluated.
+    #[strum(serialize = "list")]
+    List,
     /// Returns the first item of a list.
     #[strum(serialize = "head")]
     Head,
@@ -88,6 +92,7 @@ impl Builtin {
             Builtin::Quote => self.builtin_quote(env_table, env, args),
             Builtin::Eval => self.builtin_eval(env_table, env, args),
             Builtin::Do => self.builtin_do(env_table, env, args),
+            Builtin::List => self.builtin_list(env_table, env, args),
             Builtin::Head => self.builtin_head(env_table, env, args),
             Builtin::Tail => self.builtin_tail(env_table, env, args),
             Builtin::Concat => self.builtin_concat(env_table, env, args),
@@ -304,6 +309,18 @@ impl Builtin {
         }
 
         arg_last.eval(env_table, env)
+    }
+
+    /// Return a list containing all args
+    /// evaluated.
+    fn builtin_list(
+        &self,
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        let res: Result<_, Error> = args.into_iter().map(|expr| expr.eval(env_table, env)).collect();
+        Ok(Expr::List(res?))
     }
 
     /// Returns the first item of the passed list
