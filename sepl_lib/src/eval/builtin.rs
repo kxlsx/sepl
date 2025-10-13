@@ -87,22 +87,22 @@ impl Builtin {
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
         match self {
-            Builtin::Lambda => self.builtin_lambda(env_table, env, args),
-            Builtin::Define => self.builtin_define(env_table, env, args),
-            Builtin::Quote => self.builtin_quote(env_table, env, args),
-            Builtin::Eval => self.builtin_eval(env_table, env, args),
-            Builtin::Do => self.builtin_do(env_table, env, args),
-            Builtin::List => self.builtin_list(env_table, env, args),
-            Builtin::Head => self.builtin_head(env_table, env, args),
-            Builtin::Tail => self.builtin_tail(env_table, env, args),
-            Builtin::Concat => self.builtin_concat(env_table, env, args),
-            Builtin::IfElse => self.builtin_ifelse(env_table, env, args),
-            Builtin::Eq => self.builtin_eq(env_table, env, args),
-            Builtin::Leq => self.builtin_leq(env_table, env, args),
-            Builtin::Add => self.builtin_add(env_table, env, args),
-            Builtin::Sub => self.builtin_sub(env_table, env, args),
-            Builtin::Mul => self.builtin_mul(env_table, env, args),
-            Builtin::Div => self.builtin_div(env_table, env, args),
+            Builtin::Lambda => Builtin::builtin_lambda(env_table, env, args),
+            Builtin::Define => Builtin::builtin_define(env_table, env, args),
+            Builtin::Quote => Builtin::builtin_quote(env_table, env, args),
+            Builtin::Eval => Builtin::builtin_eval(env_table, env, args),
+            Builtin::Do => Builtin::builtin_do(env_table, env, args),
+            Builtin::List => Builtin::builtin_list(env_table, env, args),
+            Builtin::Head => Builtin::builtin_head(env_table, env, args),
+            Builtin::Tail => Builtin::builtin_tail(env_table, env, args),
+            Builtin::Concat => Builtin::builtin_concat(env_table, env, args),
+            Builtin::IfElse => Builtin::builtin_ifelse(env_table, env, args),
+            Builtin::Eq => Builtin::builtin_eq(env_table, env, args),
+            Builtin::Leq => Builtin::builtin_leq(env_table, env, args),
+            Builtin::Add => Builtin::builtin_add(env_table, env, args),
+            Builtin::Sub => Builtin::builtin_sub(env_table, env, args),
+            Builtin::Mul => Builtin::builtin_mul(env_table, env, args),
+            Builtin::Div => Builtin::builtin_div(env_table, env, args),
         }
     }
 
@@ -156,7 +156,6 @@ impl Builtin {
     /// all have to be `symbols`, except the last one
     /// which can be any expression.
     fn builtin_lambda(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         mut args: LinkedList<Expr>,
@@ -208,7 +207,6 @@ impl Builtin {
     /// is a `symbol`, the second one any
     /// expression.
     fn builtin_define(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -245,7 +243,6 @@ impl Builtin {
     ///
     /// Accepts 1 argument.
     fn builtin_quote(
-        &self,
         _env_table: &mut EnvTable,
         _env: Env,
         args: LinkedList<Expr>,
@@ -265,7 +262,6 @@ impl Builtin {
     ///
     /// Accepts 1 argument.
     fn builtin_eval(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -289,7 +285,6 @@ impl Builtin {
     ///
     /// Accepts any non-zero number of arguments.
     fn builtin_do(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         mut args: LinkedList<Expr>,
@@ -314,7 +309,6 @@ impl Builtin {
     /// Return a list containing all args
     /// evaluated.
     fn builtin_list(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -328,7 +322,6 @@ impl Builtin {
     ///
     /// Accepts an argument that evaluates to a list.
     fn builtin_head(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -358,7 +351,6 @@ impl Builtin {
     ///
     /// Accepts an argument that evaluates to a list.
     fn builtin_tail(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -391,7 +383,6 @@ impl Builtin {
     ///
     /// Accepts two arguments that evaluate to two lists.
     fn builtin_concat(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -441,7 +432,6 @@ impl Builtin {
     ///
     /// Accepts 3 arguments.
     fn builtin_ifelse(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -478,7 +468,6 @@ impl Builtin {
     /// 
     /// Accepts 2 arguments of any type.
     fn builtin_eq(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -517,7 +506,6 @@ impl Builtin {
     ///
     /// Accepts 2 `float` arguments.
     fn builtin_leq(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -573,7 +561,7 @@ impl Builtin {
     /// There must be at least 2 args
     /// and every argument must be a
     /// `float`.
-    fn binary_numeric_operation<F: Fn(f64, f64) -> f64>(
+    fn builtin_binary_numeric<F: Fn(f64, f64) -> f64>(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -612,45 +600,41 @@ impl Builtin {
     /// Return the result of adding
     /// two `float`s
     fn builtin_add(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Add, |a, b| a + b)
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Add, |a, b| a + b)
     }
 
     /// Return the result of subtracting
     /// two `float`s
     fn builtin_sub(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Sub, |a, b| a - b)
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Sub, |a, b| a - b)
     }
 
     /// Return the result of multiplying
     /// two `float`s
     fn builtin_mul(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Mul, |a, b| a * b)
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Mul, |a, b| a * b)
     }
 
     /// Return the result of dividing
     /// two `float`s
     fn builtin_div(
-        &self,
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::binary_numeric_operation(env_table, env, args, Builtin::Div, |a, b| a / b)
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Div, |a, b| a / b)
     }
 }
 
