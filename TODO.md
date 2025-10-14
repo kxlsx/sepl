@@ -6,7 +6,6 @@
 - more commands for the repl (undefine, restore)
 # LIB
 - clean up + add more builtins
-- add ints
 - tests
 - figure out lib interface
 - stack overflow handling, iterative evaluation (manual stack)
@@ -17,4 +16,3 @@
 - check docs
 - add tests for lists
 - (last (x y z w))
-- figure out list syntax

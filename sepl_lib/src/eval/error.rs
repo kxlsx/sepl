@@ -18,4 +18,8 @@ pub enum Error {
         expected: &'static str,
         found: &'static str,
     },
+    #[error("Attempt to divide by zero.")]
+    DivisionByZero {
+        builtin: Builtin
+    }
 }

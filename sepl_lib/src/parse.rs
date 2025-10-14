@@ -101,6 +101,7 @@ impl<'s, 'i, I: Intern<Symbol>> Parser<'s, 'i, I> {
     pub fn parse_lit(&mut self) -> Result<Lit, Error> {
         let lit = match self.lookahead() {
             Some(Ok(Token::Float(float))) => Ok(Lit::Float(float)),
+            Some(Ok(Token::Int(int))) => Ok(Lit::Int(int)),
             Some(Ok(other_token)) => Err(Error::ExpectedLit {
                 found: other_token.to_string(),
             }),

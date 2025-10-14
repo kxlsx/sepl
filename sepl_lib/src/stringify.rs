@@ -52,6 +52,9 @@ impl<R: Resolve<Symbol>> Stringify<Symbol, R> for EvalError {
             err @ EvalError::IncorrectArgType { builtin, .. } => {
                 format!("<{}>: {}", builtin, err)
             }
+            err @ EvalError::DivisionByZero { builtin, .. } => {
+                format!("<{}>: {}", builtin, err)
+            }
         }
     }
 }

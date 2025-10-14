@@ -30,6 +30,12 @@ pub enum Token<'i> {
     /// Right brace.
     #[regex(r"[\)\]\}]", parse_bracket_token)]
     RightBracket(BracketType),
+    // Decimal integer
+    #[regex(
+        r"(-?[1-9][0-9]*)|0", 
+        parse_int_token
+    )]
+    Int(i64),
     /// A floating point number, i.e. a number
     /// that at least ends with a dot.
     #[regex(
@@ -53,6 +59,7 @@ impl<'i> Display for Token<'i> {
             Token::RightBracket(BracketType::Normal) => write!(f, ")"),
             Token::RightBracket(BracketType::Square) => write!(f, "]"),
             Token::RightBracket(BracketType::Curly) => write!(f, "}}"),
+            Token::Int(int) => write!(f, "{}", int),
             Token::Float(float) => write!(f, "{}", float),
             Token::Symbol(name) => write!(f, "{}", name),
         }
@@ -74,6 +81,10 @@ fn parse_bracket_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> BracketType {
         '{' | '}' => BracketType::Curly,
         _ => unreachable!(),
     }
+}
+
+fn parse_int_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> i64 {
+    unsafe { lex.slice().parse::<i64>().unwrap_unchecked() }
 }
 
 fn parse_float_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> f64 {
@@ -126,6 +137,19 @@ mod tests {
         assert_token!(lexer, Token::Symbol("-"));
         assert_token!(lexer, Token::Symbol("-abba"));
         assert_token!(lexer, Token::Symbol("arg1"));
+        assert_empty!(lexer);
+
+        Ok(())
+    }
+
+    #[test]
+    fn lex_ints() -> Result<(), Error> {
+        let source = "21 -37 0";
+        let mut lexer = Token::lexer(source);
+
+        assert_token!(lexer, Token::Int(21));
+        assert_token!(lexer, Token::Int(-37));
+        assert_token!(lexer, Token::Int(0));
         assert_empty!(lexer);
 
         Ok(())

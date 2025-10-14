@@ -15,6 +15,12 @@ macro_rules! expr_type_str {
     (Lit::Float) => {
         "float"
     };
+    (Lit::Int) => {
+        "int"
+    };
+    (numeric) => {
+        "float|int"
+    };
     (Procedure) => {
         "procedure"
     };
@@ -155,6 +161,7 @@ impl Expr {
     /// ```
     pub const fn as_type_str(&self) -> &'static str {
         match self {
+            Expr::Lit(Lit::Int(_)) => expr_type_str!(Lit::Int),
             Expr::Lit(Lit::Float(_)) => expr_type_str!(Lit::Float),
             Expr::Symbol(_) => expr_type_str!(Symbol),
             Expr::Procedure(_) => expr_type_str!(Procedure),
@@ -263,10 +270,10 @@ mod tests {
 
         assert_evals_from_str!(
             with env_table:
-            "(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))"
+            "(define fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))"
                 => Ok(_),
-            "(fact 10.)"
-                => Ok(Expr::Lit(Lit::Float(3628800.0))),
+            "(fact 10)"
+                => Ok(Expr::Lit(Lit::Int(3628800))),
         );
 
         Ok(())
@@ -278,14 +285,14 @@ mod tests {
 
         assert_evals_from_str!(
             with env_table:
-            "(define fib (lambda (a b n) (if (= n 0.0) a (fib b (+ a b) (- n 1.0)))))"
+            "(define fib (lambda (a b n) (if (= n 0) a (fib b (+ a b) (- n 1)))))"
                 => Ok(_),
-            "(define fib_bad (lambda (n) (if (= n 0.0) 0.0 (if (= n 1.0) 1.0 (+ (fib_bad (- n 1.0)) (fib_bad (- n 2.0)))))))"
+            "(define fib_bad (lambda (n) (if (= n 0) 0 (if (= n 1) 1 (+ (fib_bad (- n 1)) (fib_bad (- n 2)))))))"
                 => Ok(_),
-            "(fib 0. 1. 10.)"
-                => Ok(Expr::Lit(Lit::Float(55.))),
-            "(fib_bad 10.)"
-                => Ok(Expr::Lit(Lit::Float(55.))),
+            "(fib 0 1 10)"
+                => Ok(Expr::Lit(Lit::Int(55))),
+            "(fib_bad 10)"
+                => Ok(Expr::Lit(Lit::Int(55))),
         );
 
         Ok(())
@@ -299,8 +306,8 @@ mod tests {
             with env_table:
             "(define f (lambda (a) (lambda (b) (lambda (c) (+ a (+ b c))))))"
                 => Ok(_),
-            "(((f 2.) 2.) 2.)"
-                => Ok(Expr::Lit(Lit::Float(6.))),
+            "(((f 2) 2) 2)"
+                => Ok(Expr::Lit(Lit::Int(6))),
         );
 
         Ok(())
@@ -318,12 +325,12 @@ mod tests {
                 => Ok(_),
             "(define cdr (lambda (z) (z (lambda (p q) q))))"
                 => Ok(_),
-            "(define xs (cons 1.0 (cons 2. (cons 3. nil))))"
+            "(define xs (cons 1 (cons 2 (cons 3 nil))))"
                 => Ok(_),
             "(define sum (lambda ((quote xs)) (if (cdr xs) (+ (car xs) (sum (cdr xs))) (car xs))))"
                 => Ok(_),
             "(sum xs)"
-                => Ok(Expr::Lit(Lit::Float(6.))),
+                => Ok(Expr::Lit(Lit::Int(6))),
         );
 
         Ok(())
@@ -336,6 +343,7 @@ mod tests {
         assert_evals_from_str!(
             with env_table:
             "42."   => Ok(Expr::Lit(Lit::Float(42.))),
+            "42"   => Ok(Expr::Lit(Lit::Int(42))),
         );
 
         Ok(())

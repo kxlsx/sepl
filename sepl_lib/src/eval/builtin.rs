@@ -51,21 +51,33 @@ pub enum Builtin {
     Eq,
     /// Returns true if the first argument
     /// is less-than-or-equal to the second
-    /// (both must be `float`s)
+    /// (both must be `float`s or `int`s).
     #[strum(serialize = "<=")]
     Leq,
-    /// Adds two `float`s
+    /// Adds numbers.
     #[strum(serialize = "+")]
     Add,
-    /// Subtracts two `float`s
+    /// Subtracts numbers.
     #[strum(serialize = "-")]
     Sub,
-    /// Multiplies two `float`s
+    /// Multiplies numbers.
     #[strum(serialize = "*")]
     Mul,
-    /// Divides two `float`s
+    /// Divides numbers.
     #[strum(serialize = "/")]
     Div,
+    /// Performs integer division on numbers.
+    #[strum(serialize = "//")]
+    IntDiv,
+    /// Returns the remainder of integer division.
+    #[strum(serialize = "%")]
+    Rem,
+    /// Convert number to an `int``.
+    #[strum(serialize = "int")]
+    AsInt,
+    /// Convert number to a `float`.
+    #[strum(serialize = "float")]
+    AsFloat,
 }
 
 impl Builtin {
@@ -104,6 +116,10 @@ impl Builtin {
             Builtin::Sub => Builtin::builtin_sub(env_table, env, args),
             Builtin::Mul => Builtin::builtin_mul(env_table, env, args),
             Builtin::Div => Builtin::builtin_div(env_table, env, args),
+            Builtin::IntDiv => Builtin::builtin_intdiv(env_table, env, args),
+            Builtin::Rem => Builtin::builtin_rem(env_table, env, args),
+            Builtin::AsInt => Builtin::builtin_asint(env_table, env, args),
+            Builtin::AsFloat => Builtin::builtin_asfloat(env_table, env, args),
         }
     }
 
@@ -136,7 +152,8 @@ impl Builtin {
     /// 1. The expressions must be of the same type.
     /// 2. List equality is checked recursively, element by element.
     /// 3. Procedure equality is checked with reference equality
-    /// 4. Others are checked directly.
+    /// 4. `int`s are coerced to `float`s if compared with a `float`.
+    /// 5. Others are checked directly.
     fn builtin_expr_match(expr_a: Expr, expr_b: Expr) -> bool {
         match (expr_a, expr_b) {
             (Expr::List(list_a), Expr::List(list_b)) => {
@@ -150,6 +167,9 @@ impl Builtin {
             (Expr::Procedure(a), Expr::Procedure(b)) => a == b,
             (Expr::Symbol(a), Expr::Symbol(b)) => a == b,
             (Expr::Lit(Lit::Float(a)), Expr::Lit(Lit::Float(b))) => a == b,
+            (Expr::Lit(Lit::Float(a)), Expr::Lit(Lit::Int(b))) => a == b as f64,
+            (Expr::Lit(Lit::Int(a)), Expr::Lit(Lit::Float(b))) => a as f64 == b,
+            (Expr::Lit(Lit::Int(a)), Expr::Lit(Lit::Int(b))) => a == b,
             (_, _) => false,
         }
     }
@@ -488,9 +508,9 @@ impl Builtin {
 
     /// Returns true if the first argument
     /// is less-than-or-equal to the second
-    /// (both must be `float`s).
+    /// (both must be `float`s and/or `int`s).
     ///
-    /// Accepts 2 `float` arguments.
+    /// `int`s are coerced to `float`s if compared with a `float`.
     fn builtin_leq(
         env_table: &mut EnvTable,
         env: Env,
@@ -511,10 +531,11 @@ impl Builtin {
             .unwrap()
             .eval(env_table, env)
             .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                Expr::Lit(Lit::Float(num)) => Ok(Lit::Float(num)),
+                Expr::Lit(Lit::Int(num)) => Ok(Lit::Int(num)),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Leq,
-                    expected: expr_type_str!(Lit::Float),
+                    expected: expr_type_str!(numeric),
                     found: other_expr.as_type_str(),
                 }),
             })??;
@@ -523,15 +544,23 @@ impl Builtin {
             .unwrap()
             .eval(env_table, env)
             .map(|e| match e {
-                Expr::Lit(Lit::Float(cond)) => Ok(cond),
+                Expr::Lit(Lit::Float(num)) => Ok(Lit::Float(num)),
+                Expr::Lit(Lit::Int(num)) => Ok(Lit::Int(num)),
                 other_expr => Err(Error::IncorrectArgType {
                     builtin: Builtin::Leq,
-                    expected: expr_type_str!(Lit::Float),
+                    expected: expr_type_str!(numeric),
                     found: other_expr.as_type_str(),
                 }),
             })??;
+        
+        let cond = match (a, b) {
+            (Lit::Float(a), Lit::Int(b)) => a <= b as f64,
+            (Lit::Int(a), Lit::Float(b)) => a as f64 <= b,
+            (Lit::Float(a), Lit::Float(b)) => a <= b,
+            (Lit::Int(a), Lit::Int(b)) => a <= b,
+        };
 
-        Ok(if a <= b {
+        Ok(if cond {
             Builtin::builtin_true(env_table)
         } else {
             Builtin::builtin_false(env_table)
@@ -544,8 +573,8 @@ impl Builtin {
     ///
     /// There must be at least 2 args
     /// and every argument must be a
-    /// `float`.
-    fn builtin_binary_numeric<F: Fn(f64, f64) -> f64>(
+    /// `float` or `int`.
+    fn builtin_binary_numeric<F: Fn(Lit, Lit) -> Lit>(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
@@ -563,58 +592,255 @@ impl Builtin {
         let res = args
             .into_iter()
             .map(|expr| match expr.eval(env_table, env) {
-                Ok(Expr::Lit(Lit::Float(num))) => Ok(num),
+                Ok(Expr::Lit(Lit::Float(num))) => Ok(Lit::Float(num)),
+                Ok(Expr::Lit(Lit::Int(num))) => Ok(Lit::Int(num)),
                 Ok(other_expr) => Err(Error::IncorrectArgType {
                     builtin: typ,
-                    expected: expr_type_str!(Lit::Float),
+                    expected: expr_type_str!(numeric),
                     found: other_expr.as_type_str(),
                 }),
                 Err(error) => Err(error),
             })
-            .process_results(|floats| floats.reduce(binary_operation))?
+            .process_results(|nums| nums.reduce(binary_operation))?
             .unwrap();
 
-        Ok(Expr::Lit(Lit::Float(res)))
+        Ok(Expr::Lit(res))
     }
 
     /// Return the result of adding
-    /// two `float`s
+    /// `floats` and/or `ints`.
+    /// 
+    /// Returns `int` only if all arguments are `ints`.
     fn builtin_add(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Add, |a, b| a + b)
+        Builtin::builtin_binary_numeric(
+            env_table,
+            env,
+            args,
+            Builtin::Add,
+            |lit_a, lit_b| 
+                match (lit_a, lit_b) {
+                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a + b as f64),
+                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 + b),
+                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a + b),
+                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a + b),
+                }
+        )
     }
 
     /// Return the result of subtracting
-    /// two `float`s
+    /// `floats` and/or `ints`.    
+    ///  
+    /// Returns `int` only if all arguments are `ints`.
     fn builtin_sub(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Sub, |a, b| a - b)
+        Builtin::builtin_binary_numeric(
+            env_table,
+            env,
+            args,
+            Builtin::Sub,
+            |lit_a, lit_b| 
+                match (lit_a, lit_b) {
+                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a - b as f64),
+                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 - b),
+                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a - b),
+                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a - b),
+                }
+        )
     }
 
     /// Return the result of multiplying
-    /// two `float`s
+    /// `floats` and/or `ints`.
+    /// 
+    /// Returns `int` only if all arguments are `ints`.
     fn builtin_mul(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Mul, |a, b| a * b)
+        Builtin::builtin_binary_numeric(
+            env_table,
+            env,
+            args,
+            Builtin::Mul,
+            |lit_a, lit_b| 
+                match (lit_a, lit_b) {
+                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a * b as f64),
+                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 * b),
+                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a * b),
+                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a * b),
+                }
+        )
     }
 
     /// Return the result of dividing
-    /// two `float`s
+    /// `floats` and/or `ints`.
+    /// 
+    /// Always returns a `float`.
     fn builtin_div(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Div, |a, b| a / b)
+        Builtin::builtin_binary_numeric(
+            env_table,
+            env,
+            args,
+            Builtin::Div,
+            |lit_a, lit_b| 
+                match (lit_a, lit_b) {
+                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a / b as f64),
+                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 / b),
+                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a / b),
+                    (Lit::Int(a), Lit::Int(b)) => Lit::Float(a as f64 / b as f64),
+                }
+        )
+    }
+
+    /// Return the result of performing 
+    /// integer division on `ints`.
+    /// 
+    /// Always returns an `int`.
+    fn builtin_intdiv(
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() < 2 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::IntDiv),
+                expected: 2,
+                found: args.len(),
+            });
+        }
+
+        let res = args
+            .into_iter()
+            .map(|expr| match expr.eval(env_table, env) {
+                Ok(Expr::Lit(Lit::Int(num))) => Ok(num),
+                Ok(other_expr) => Err(Error::IncorrectArgType {
+                    builtin: Builtin::IntDiv,
+                    expected: expr_type_str!(Lit::Int),
+                    found: other_expr.as_type_str(),
+                }),
+                Err(error) => Err(error),
+            })
+            .process_results(|mut nums| {
+                let first = nums.next().unwrap();
+                nums.try_fold(first, |acc, div| {
+                    if div == 0 {
+                        Err(Error::DivisionByZero { builtin: Builtin::IntDiv })
+                    } else {
+                        Ok(acc / div)
+                    }
+                })
+            })??;
+
+        Ok(Expr::Lit(Lit::Int(res)))
+    }
+
+    /// Return the remainder of performing 
+    /// integer division on `ints`.
+    /// 
+    /// Always returns an `int`.
+    fn builtin_rem(
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() < 2 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::Rem),
+                expected: 2,
+                found: args.len(),
+            });
+        }
+
+        let res = args
+            .into_iter()
+            .map(|expr| match expr.eval(env_table, env) {
+                Ok(Expr::Lit(Lit::Int(num))) => Ok(num),
+                Ok(other_expr) => Err(Error::IncorrectArgType {
+                    builtin: Builtin::Rem,
+                    expected: expr_type_str!(Lit::Int),
+                    found: other_expr.as_type_str(),
+                }),
+                Err(error) => Err(error),
+            })
+            .process_results(|mut nums| {
+                let first = nums.next().unwrap();
+                nums.try_fold(first, |acc, div| {
+                    if div == 0 {
+                        Err(Error::DivisionByZero { builtin: Builtin::Rem })
+                    } else {
+                        Ok(acc % div)
+                    }
+                })
+            })??;
+
+        Ok(Expr::Lit(Lit::Int(res)))
+    }
+
+    /// Convert the numeric argument to `int`.
+    /// Does nothing to `int`s.
+    ///
+    /// Accepts 1 argument.
+    fn builtin_asint(
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 1 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::AsInt),
+                expected: 1,
+                found: args.len(),
+            });
+        }
+
+        match args.into_iter().next().unwrap().eval(env_table, env)? {
+            int @ Expr::Lit(Lit::Int(_)) => Ok(int),
+            Expr::Lit(Lit::Float(float)) => Ok(Expr::Lit(Lit::Int(float as i64))),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::AsInt,
+                expected: expr_type_str!(numeric),
+                found: other_expr.as_type_str(),
+            }),
+        }
+    }
+
+    /// Convert the numeric argument to `float`.
+    /// Does nothing to `float`s.
+    ///
+    /// Accepts 1 argument.
+    fn builtin_asfloat(
+        env_table: &mut EnvTable,
+        env: Env,
+        args: LinkedList<Expr>,
+    ) -> Result<Expr, Error> {
+        if args.len() != 1 {
+            return Err(Error::IncorrectArgCount {
+                expr: Expr::Builtin(Builtin::AsInt),
+                expected: 1,
+                found: args.len(),
+            });
+        }
+
+        match args.into_iter().next().unwrap().eval(env_table, env)? {
+            float @ Expr::Lit(Lit::Float(_)) => Ok(float),
+            Expr::Lit(Lit::Int(int)) => Ok(Expr::Lit(Lit::Float(int as f64))),
+            other_expr => Err(Error::IncorrectArgType {
+                builtin: Builtin::AsInt,
+                expected: expr_type_str!(numeric),
+                found: other_expr.as_type_str(),
+            }),
+        }
     }
 }
 
