@@ -31,10 +31,7 @@ pub enum Token<'i> {
     #[regex(r"[\)\]\}]", parse_bracket_token)]
     RightBracket(BracketType),
     // Decimal integer
-    #[regex(
-        r"(-?[1-9][0-9]*)|0", 
-        parse_int_token
-    )]
+    #[regex(r"(-?[1-9][0-9]*)|0", parse_int_token)]
     Int(i64),
     /// A floating point number, i.e. a number
     /// that at least ends with a dot.

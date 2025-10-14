@@ -552,7 +552,7 @@ impl Builtin {
                     found: other_expr.as_type_str(),
                 }),
             })??;
-        
+
         let cond = match (a, b) {
             (Lit::Float(a), Lit::Int(b)) => a <= b as f64,
             (Lit::Int(a), Lit::Float(b)) => a as f64 <= b,
@@ -609,26 +609,21 @@ impl Builtin {
 
     /// Return the result of adding
     /// `floats` and/or `ints`.
-    /// 
+    ///
     /// Returns `int` only if all arguments are `ints`.
     fn builtin_add(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(
-            env_table,
-            env,
-            args,
-            Builtin::Add,
-            |lit_a, lit_b| 
-                match (lit_a, lit_b) {
-                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a + b as f64),
-                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 + b),
-                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a + b),
-                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a + b),
-                }
-        )
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Add, |lit_a, lit_b| {
+            match (lit_a, lit_b) {
+                (Lit::Float(a), Lit::Int(b)) => Lit::Float(a + b as f64),
+                (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 + b),
+                (Lit::Float(a), Lit::Float(b)) => Lit::Float(a + b),
+                (Lit::Int(a), Lit::Int(b)) => Lit::Int(a + b),
+            }
+        })
     }
 
     /// Return the result of subtracting
@@ -640,72 +635,57 @@ impl Builtin {
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(
-            env_table,
-            env,
-            args,
-            Builtin::Sub,
-            |lit_a, lit_b| 
-                match (lit_a, lit_b) {
-                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a - b as f64),
-                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 - b),
-                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a - b),
-                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a - b),
-                }
-        )
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Sub, |lit_a, lit_b| {
+            match (lit_a, lit_b) {
+                (Lit::Float(a), Lit::Int(b)) => Lit::Float(a - b as f64),
+                (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 - b),
+                (Lit::Float(a), Lit::Float(b)) => Lit::Float(a - b),
+                (Lit::Int(a), Lit::Int(b)) => Lit::Int(a - b),
+            }
+        })
     }
 
     /// Return the result of multiplying
     /// `floats` and/or `ints`.
-    /// 
+    ///
     /// Returns `int` only if all arguments are `ints`.
     fn builtin_mul(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(
-            env_table,
-            env,
-            args,
-            Builtin::Mul,
-            |lit_a, lit_b| 
-                match (lit_a, lit_b) {
-                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a * b as f64),
-                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 * b),
-                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a * b),
-                    (Lit::Int(a), Lit::Int(b)) => Lit::Int(a * b),
-                }
-        )
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Mul, |lit_a, lit_b| {
+            match (lit_a, lit_b) {
+                (Lit::Float(a), Lit::Int(b)) => Lit::Float(a * b as f64),
+                (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 * b),
+                (Lit::Float(a), Lit::Float(b)) => Lit::Float(a * b),
+                (Lit::Int(a), Lit::Int(b)) => Lit::Int(a * b),
+            }
+        })
     }
 
     /// Return the result of dividing
     /// `floats` and/or `ints`.
-    /// 
+    ///
     /// Always returns a `float`.
     fn builtin_div(
         env_table: &mut EnvTable,
         env: Env,
         args: LinkedList<Expr>,
     ) -> Result<Expr, Error> {
-        Builtin::builtin_binary_numeric(
-            env_table,
-            env,
-            args,
-            Builtin::Div,
-            |lit_a, lit_b| 
-                match (lit_a, lit_b) {
-                    (Lit::Float(a), Lit::Int(b)) => Lit::Float(a / b as f64),
-                    (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 / b),
-                    (Lit::Float(a), Lit::Float(b)) => Lit::Float(a / b),
-                    (Lit::Int(a), Lit::Int(b)) => Lit::Float(a as f64 / b as f64),
-                }
-        )
+        Builtin::builtin_binary_numeric(env_table, env, args, Builtin::Div, |lit_a, lit_b| {
+            match (lit_a, lit_b) {
+                (Lit::Float(a), Lit::Int(b)) => Lit::Float(a / b as f64),
+                (Lit::Int(a), Lit::Float(b)) => Lit::Float(a as f64 / b),
+                (Lit::Float(a), Lit::Float(b)) => Lit::Float(a / b),
+                (Lit::Int(a), Lit::Int(b)) => Lit::Float(a as f64 / b as f64),
+            }
+        })
     }
 
-    /// Return the result of performing 
+    /// Return the result of performing
     /// integer division on `ints`.
-    /// 
+    ///
     /// Always returns an `int`.
     fn builtin_intdiv(
         env_table: &mut EnvTable,
@@ -735,7 +715,9 @@ impl Builtin {
                 let first = nums.next().unwrap();
                 nums.try_fold(first, |acc, div| {
                     if div == 0 {
-                        Err(Error::DivisionByZero { builtin: Builtin::IntDiv })
+                        Err(Error::DivisionByZero {
+                            builtin: Builtin::IntDiv,
+                        })
                     } else {
                         Ok(acc / div)
                     }
@@ -745,9 +727,9 @@ impl Builtin {
         Ok(Expr::Lit(Lit::Int(res)))
     }
 
-    /// Return the remainder of performing 
+    /// Return the remainder of performing
     /// integer division on `ints`.
-    /// 
+    ///
     /// Always returns an `int`.
     fn builtin_rem(
         env_table: &mut EnvTable,
@@ -777,7 +759,9 @@ impl Builtin {
                 let first = nums.next().unwrap();
                 nums.try_fold(first, |acc, div| {
                     if div == 0 {
-                        Err(Error::DivisionByZero { builtin: Builtin::Rem })
+                        Err(Error::DivisionByZero {
+                            builtin: Builtin::Rem,
+                        })
                     } else {
                         Ok(acc % div)
                     }

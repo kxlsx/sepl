@@ -56,7 +56,9 @@ pub fn repl() -> Result<()> {
             ReplCommand::PrintDefined => {
                 let symbol_defs = env_table.symbols_global();
                 if let Some(defs) = symbol_defs {
-                    for (symbol, expr) in defs.sorted_by_key(|(sym, _)| env_table.symbol_resolve(**sym)) {
+                    for (symbol, expr) in
+                        defs.sorted_by_key(|(sym, _)| env_table.symbol_resolve(**sym))
+                    {
                         println!(
                             "'{}' => {}",
                             env_table.symbol_resolve(*symbol),
