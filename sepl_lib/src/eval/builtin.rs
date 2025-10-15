@@ -712,7 +712,11 @@ impl Builtin {
                 Err(error) => Err(error),
             })
             .process_results(|mut nums| {
-                let first = nums.next().unwrap();
+                let first = if let Some(float) = nums.next() {
+                    float
+                } else {
+                    return Ok(0) // FIXME: dirty hack to return error early if nums is empty
+                };
                 nums.try_fold(first, |acc, div| {
                     if div == 0 {
                         Err(Error::DivisionByZero {
@@ -756,7 +760,11 @@ impl Builtin {
                 Err(error) => Err(error),
             })
             .process_results(|mut nums| {
-                let first = nums.next().unwrap();
+                let first = if let Some(float) = nums.next() {
+                    float
+                } else {
+                    return Ok(0) // FIXME: dirty hack to return error early if nums is empty
+                };
                 nums.try_fold(first, |acc, div| {
                     if div == 0 {
                         Err(Error::DivisionByZero {
