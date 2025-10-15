@@ -60,7 +60,7 @@ pub fn repl() -> Result<()> {
                         defs.sorted_by_key(|(sym, _)| env_table.symbol_resolve(**sym))
                     {
                         println!(
-                            "'{}' => {}",
+                            "{:<8} => {}",
                             env_table.symbol_resolve(*symbol),
                             expr.stringify(&env_table)
                         );

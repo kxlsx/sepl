@@ -14,7 +14,7 @@ impl<R: Resolve<Symbol>> Stringify<Symbol, R> for Expr {
         match self {
             Expr::Symbol(symbol) => String::from(symbol_interner.resolve(*symbol)),
             Expr::Lit(lit) => lit.to_string(),
-            Expr::Builtin(builtin) => builtin.to_string(),
+            Expr::Builtin(builtin) => format!("<{builtin}>"),
             Expr::Procedure(proc) => proc.stringify(symbol_interner),
             Expr::List(list) => {
                 format!(
@@ -39,7 +39,7 @@ impl<R: Resolve<Symbol>> Stringify<Symbol, R> for Procedure {
         );
         let body_str = self.body().stringify(symbol_interner);
 
-        format!("(lambda {args_str} {body_str})")
+        format!("<(lambda {args_str} {body_str})>")
     }
 }
 
