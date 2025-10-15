@@ -48,7 +48,7 @@ pub fn repl() -> Result<()> {
                     let evald_expr = parsed_expr.eval_global(&mut env_table);
                     match evald_expr {
                         Ok(expr) => print!("{} ", expr.stringify(&env_table)),
-                        Err(err) => println!("{}", err.stringify(&env_table)),
+                        Err(err) => print!("{}", err.stringify(&env_table)),
                     }
                 }
                 println!();
