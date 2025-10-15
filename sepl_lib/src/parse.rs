@@ -21,6 +21,8 @@ pub enum Error {
     UnexpectedEOF,
     #[error("Unexpected token: '{token}'.")]
     UnexpectedToken { token: String },
+    #[error("Invalid float: `{token}`")]
+    InvalidFloat { token: String }
 }
 
 /// Struct representing a parser for
@@ -164,6 +166,9 @@ impl<'s, 'i, I: Intern<Symbol>> Parser<'s, 'i, I> {
             Some(Err(LexError::UnexpectedToken)) => Some(Err(Error::UnexpectedToken {
                 token: String::from(self.lexer.slice()),
             })),
+            Some(Err(LexError::InvalidFloat)) => Some(Err(Error::InvalidFloat {
+                token: String::from(self.lexer.slice()),
+            }))
         }
     }
 }

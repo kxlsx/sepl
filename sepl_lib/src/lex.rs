@@ -11,6 +11,8 @@ pub enum Error {
     #[default]
     #[error("Unexpected token.")]
     UnexpectedToken,
+    #[error("Invalid float")]
+    InvalidFloat,
 }
 
 /// Every token represented by the [`Lexer`]
@@ -31,12 +33,12 @@ pub enum Token<'i> {
     #[regex(r"[\)\]\}]", parse_bracket_token)]
     RightBracket(BracketType),
     // Decimal integer
-    #[regex(r"(-?[1-9][0-9]*)|0", parse_int_token)]
+    #[regex(r"-?[0-9]*", parse_int_token)]
     Int(i64),
     /// A floating point number, i.e. a number
     /// that at least ends with a dot.
     #[regex(
-        r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]+", // FIXME: make 32e 5.e etc invalid
+        r"-?[0-9]+\.[0-9]*|-?[0-9]+(\.[0-9]*)?[eE][+\-]?[0-9]*",
         parse_float_token,
         priority = 5
     )]
@@ -84,8 +86,8 @@ fn parse_int_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> i64 {
     unsafe { lex.slice().parse::<i64>().unwrap_unchecked() }
 }
 
-fn parse_float_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> f64 {
-    unsafe { lex.slice().parse::<f64>().unwrap_unchecked() }
+fn parse_float_token<'s>(lex: &mut Lexer<'s, Token<'s>>) -> Result<f64, Error> {
+    lex.slice().parse::<f64>().map_err(|_| Error::InvalidFloat)
 }
 
 #[cfg(test)]
@@ -93,6 +95,9 @@ mod tests {
     use super::*;
 
     macro_rules! assert_token {
+        ($lexer:ident, Err($err:expr)) => {
+            assert_eq!($lexer.next().expect("Lexer is empty!"), Err($err));
+        };
         ($lexer:ident, $token:expr) => {
             assert_eq!($lexer.next().expect("Lexer is empty!"), Ok($token));
         };
@@ -154,7 +159,7 @@ mod tests {
 
     #[test]
     fn lex_floats() -> Result<(), Error> {
-        let source = "21. -37.42 0.1 1e-2 3E45 -15e10";
+        let source = "21. -37.42 0.1 1e-2 3E45 -15e10 99e -32e 32.E 84.32e";
         let mut lexer = Token::lexer(source);
 
         assert_token!(lexer, Token::Float(21.));
@@ -163,6 +168,10 @@ mod tests {
         assert_token!(lexer, Token::Float(1e-2));
         assert_token!(lexer, Token::Float(3e45));
         assert_token!(lexer, Token::Float(-15e10));
+        assert_token!(lexer, Err(Error::InvalidFloat));
+        assert_token!(lexer, Err(Error::InvalidFloat));
+        assert_token!(lexer, Err(Error::InvalidFloat));
+        assert_token!(lexer, Err(Error::InvalidFloat));
         assert_empty!(lexer);
 
         Ok(())
