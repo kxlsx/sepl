@@ -43,7 +43,7 @@ Wyrażeniami są:
 literałami.
 - Wywołania procedur - Konstrukcje typu: '(' \<lista_wyrażeń\> ')'.
 
-W języku zawarte są następujące wbudowane procedury:
+W języku między innymi zawarte są następujące wbudowane procedury:
 - `(define x expr)` - Definiuje symbol `x` jako wyrażenie `expr`.
 - `(lambda (x1 ... xn) expr)` - Tworzy anonimową procedurę 
 o argumentach `x1, ... xn` i ciele `expr`
@@ -58,8 +58,8 @@ o argumentach `x1, ... xn` i ciele `expr`
 Program liczący wynik 52!:
 ```lisp
 (define = (lambda (a b) (if (<= a b) (<= b a) false)))
-(define fact (lambda (n) (if (= n 0.0) 1. (* n (fact (- n 1.))))))
-(fact 52.0)
+(define fact (lambda (n) (if (= n 0) 1 (* n (fact (- n 1))))))
+(fact 52)
 ```
 Program liczący sumę listy zawierającej
 liczby 1, 2, 3.
@@ -67,12 +67,7 @@ liczby 1, 2, 3.
 (define cons (lambda (x y) (lambda (m) (m x y))))
 (define car (lambda (z) (z (lambda (p q) p))))
 (define cdr (lambda (z) (z (lambda (p q) q))))
-(define list (cons 1.0 (cons 2. (cons 3. nil))))
+(define ls (cons 1 (cons 2 (cons 3 nil))))
 (define sum (lambda (xs) (if (cdr xs) (+ (car xs) (sum (cxs))) (car xs))))
-(sum list)
+(sum ls)
 ```
-
-## Problemy
-Język w obecnym stanie nie zawiera liczb całkowitych. 
-Z powodu limitowanego czasu zaimplementowane zostały
-tylko liczby zmiennoprzecinkowe.
