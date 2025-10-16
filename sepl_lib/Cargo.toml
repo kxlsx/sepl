@@ -1,12 +1,12 @@
 [package]
 name = "sepl-lib"
-version = "0.0.2"
+version = "1.0.0"
 edition = "2021"
 authors = ["Łukasz Dragon <lukasz.b.dragon@gmail.com>"]
 license = "GPL-3.0-only"
 readme = "README.md"
 repository = "https://github.com/kxlsx/sepl/"
-description = "Interpreter library for a lisp dialect"
+description = "Interpreter library for the sepl lisp dialect"
 
 
 [dependencies]
