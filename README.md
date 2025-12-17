@@ -14,8 +14,8 @@ An interpreter for a minimal [`lisp`](https://en.wikipedia.org/wiki/Lisp_(progra
 
 This is a project that I made 90% for fun and 10% for a grade.
 I probably won't ever implement all of the features and optimizations
-I'd want, (as I unfortunately don't yet posess infinite time), but
-most of the basic `lisp` special forms are here.
+I'd want, as I unfortunately don't yet posess infinite time, but
+most of the basic `lisp` features are implemented.
 
 ## Building
 
@@ -88,7 +88,7 @@ so two identical strings are treated as the same symbol.
 
 ### Evaluation
 
-There are 3 evaluation rules:
+There are 4 evaluation rules:
 
 1. `procedures`, `bultins`, `floats`, `ints`
 always yield themselves.
@@ -170,7 +170,7 @@ The list of recognized `builtins` is as follows:
 
 ### Scope
 
-Every defined `symbol` exists in a scope. The default one is
+Every defined `symbol` exists in a scope. The default scope is
 called the global scope. Every created `procedure` captures
 the environment it's been created in and creates a scope of its
 own when called. When searching for a `symbol` definition, the interpreter searches recursively, starting in the current scope
